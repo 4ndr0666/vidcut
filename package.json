@@ -1,10 +1,10 @@
 {
-  "name": "flawless-cut",
+  "name": "vid-cut",
   "version": "1.0.1",
   "description": "Fast and lossless video cutter and merger",
-  "author": "Ai Chen <app@zerg.cc> (https://github.com/metadream)",
-  "repository": "github:metadream/app-flawless-cut",
-  "copyright": "Copyright (c) 2019-2023",
+  "author": "4ndr0666 (https://github.com/4ndr0666)",
+  "repository": "github:4ndr0666/vid-cut",
+  "copyright": "Copyright (c) 2024",
   "license": "MIT",
   "main": "app/main.js",
   "dependencies": {
