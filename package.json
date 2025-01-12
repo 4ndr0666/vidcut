@@ -4,6 +4,7 @@
     "description": "Fast and lossless video cutter and merger",
     "author": "4ndr0666",
     "repository": "github:4ndr0666/vid-cut",
+    "email": "01_dolorloftier@icloud.com",
     "copyright": "Copyright (c) 2024-2025",
     "license": "MIT",
     "main": "app/main.js",
