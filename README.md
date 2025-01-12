@@ -1,12 +1,13 @@
 # Vid-Cut
 
-I simply added some utilities to another application, [Flawless-Cut](https://github.com/metadream/app-flawless-cut). It literally borrows all practices of Flawless-Cut, thanks for that.
+[Flawless-Cut](https://github.com/metadream/app-flawless-cut) with some custom additions.
 
 ![Software Interface](https://raw.githubusercontent.com/metadream/app-flawless-cut/master/screenshot.png)
 
 ## Upgraded Feature
 
-- Irrdescent "Slo-Mo" button to precisely cut video
+- Irrdescent glowing buttons
+- Speed control for precise cutting
 
 ## Standard Factory Features
 
@@ -26,16 +27,16 @@ For formats not supported by Chromium, Vid-Cut uses fast real-time transcoding a
 
 ## Develop and Build
 
-### 1\. Install NODE & NPM
+### 1. Install NODE & NPM
 
-### 2\. Install Dependencies
+### 2. Install Dependencies
 
 ```
 export ELECTRON_MIRROR="https://npm.taobao.org/mirrors/electron/"
 npm install
 ```
 
-### 3\. Run and Debug
+### 3. Run and Debug
 
 ```
 npm start
@@ -48,7 +49,7 @@ chmod +x app/bin/*
 sudo apt install -y libmediainfo-dev
 ```
 
-### 4\. Build by Platform
+### 4. Build by Platform
 
 ```
 npm run build:linux

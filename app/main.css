@@ -383,21 +383,19 @@ button.slow-down {
   color: #000;
   background-color: rgba(74, 85, 96, 0.2);
   border: none;
-  padding: 1px 1px; /* Halved padding for smaller button */
+  padding: 1px 1px;
   margin: 4px;
   font-size: 15px;
   cursor: pointer;
   border-radius: 3px;
   transition: background-color 0.3s ease, box-shadow 0.3s ease;
-  text-indent: -0.25in; /* Shift text to the left */
+  text-indent: -0.25in;
 }
 
 button.slow-down:hover {
   background-color: #555;
-
-    /* Add glow effect on hover */
-  box-shadow: 0 0 10px #15ffff, /* Horizontal offset, vertical offset, blur radius, color */
-              0 0 20px #15ffff, /* Multiple shadows for intenser glow */
+  box-shadow: 0 0 10px #15ffff,
+              0 0 20px #15ffff,
               0 0 30px #15ffff,
               0 0 40px #15ffff;
 
@@ -406,6 +404,32 @@ button.slow-down:hover {
 button.slow-down:active {
   background-color: #222;
 }
+
+button.speed-up {
+  color: #000;
+  background-color: rgba(74, 85, 96, 0.2);
+  border: none;
+  padding: 1px 1px; /* same as slow-down */
+  margin: 4px;
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  text-indent: -0.25in; /* Shift text if you like */
+}
+
+button.speed-up:hover {
+  background-color: #555;
+  box-shadow: 0 0 10px #15ffff,
+              0 0 20px #15ffff,
+              0 0 30px #15ffff,
+              0 0 40px #15ffff;
+}
+
+button.speed-up:active {
+  background-color: #222;
+}
+
 
 button.play {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1024 1024' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M847.14 541.989l-679.935 473.526a36.571 36.571 0 0 1-57.49-29.988V38.473a36.571 36.571 0 0 1 57.49-29.988L847.14 482.01a36.571 36.571 0 0 1 0 59.978z' fill='%23333'/%3E%3C/svg%3E")

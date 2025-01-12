@@ -17,6 +17,7 @@ const segmentEndBtn = $('.segment-end')
 const cutStartBtn = $('.cut-start')
 const cutEndBtn = $('.cut-end')
 const slowDownBtn = $('.slow-down')
+const speedUpBtn = $('.speed-up')
 
 module.exports = class {
 
@@ -44,12 +45,18 @@ module.exports = class {
     }
 
     slowDownBtn.onclick = () => {
-    // Ensure the playback rate doesn't go below 0.2
-       if (video.playbackRate > 0.2) {
-       video.playbackRate -= 0.1
+      // Ensure the playback rate doesn't go below 0.2
+      if (video.playbackRate > 0.2) {
+        video.playbackRate -= 0.1;
       }
-    }
+    };
 
+    speedUpBtn.onclick = () => {
+      // Ensure the playback rate doesn't go above 2.0
+      if (video.playbackRate < 2.0) {
+        video.playbackRate += 0.1;
+      }
+    };
 
     cutStartBtn.onclick = () => {
       segmentStartTime.value = formatDuration(video.getCurrentTime())

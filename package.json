@@ -1,14 +1,36 @@
 {
-  "name": "vidcut",
-  "version": "1.0.1",
-  "description": "Fast and lossless video cutter and merger",
-  "author": "4ndr0666 (https://github.com/4ndr0666)",
-  "repository": "github:4ndr0666/vid-cut",
-  "copyright": "Copyright (c) 2024",
-  "license": "MIT",
-  "main": "app/main.js",
-  "dependencies": {
-    "string-to-stream": "^3.0.1",
-    "@electron/remote": "^2.0.10"
-  }
+    "name": "vidcut",
+    "version": "1.0.1",
+    "description": "Fast and lossless video cutter and merger",
+    "author": "4ndr0666",
+    "repository": "github:4ndr0666/vid-cut",
+    "copyright": "Copyright (c) 2024-2025",
+    "license": "MIT",
+    "main": "app/main.js",
+    "scripts": {
+        "start": "electron .",
+        "build:linux": "electron-builder -l",
+        "build:win": "electron-builder -w"
+    },
+    "build": {
+        "appId": "flawless-cut",
+        "win": {
+            "target": [
+                "nsis"
+            ]
+        },
+        "linux": {
+            "target": [
+                "deb"
+            ]
+        }
+    },
+    "devDependencies": {
+        "electron": "^23.1.0",
+        "electron-builder": "^23.6.0"
+    },
+    "dependencies": {
+        "string-to-stream": "^3.0.1",
+        "@electron/remote": "^2.0.10"
+    }
 }
