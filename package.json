@@ -2,9 +2,11 @@
     "name": "vidcut",
     "version": "1.0.1",
     "description": "Fast and lossless video cutter and merger",
-    "author": "4ndr0666",
-    "repository": "github:4ndr0666/vid-cut",
-    "email": "01_dolorloftier@icloud.com",
+    "author": {
+        "name": "4ndr0666",
+        "email": "01_dolorloftier@icloud.com",
+      },
+    "repository": "github:4ndr0666/vidcut",
     "copyright": "Copyright (c) 2024-2025",
     "license": "MIT",
     "main": "app/main.js",
@@ -14,7 +16,7 @@
         "build:win": "electron-builder -w"
     },
     "build": {
-        "appId": "flawless-cut",
+        "appId": "vidcut",
         "win": {
             "target": [
                 "nsis"

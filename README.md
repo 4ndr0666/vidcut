@@ -1,13 +1,17 @@
 # Vid-Cut
 
-[Flawless-Cut](https://github.com/metadream/app-flawless-cut) with some custom additions.
+---
+
+This is just [Flawless-Cut](https://github.com/metadream/app-flawless-cut) with some extra mods for precise cutting of clips. Slow down, speed up, etc.
 
 ![Software Interface](https://raw.githubusercontent.com/metadream/app-flawless-cut/master/screenshot.png)
 
-## Upgraded Feature
+## Upgraded Features
 
-- Irrdescent glowing buttons
+- Irrdescent glowing buttons (cyan) on hover
 - Speed control for precise cutting
+- Slow-down 
+- Speed-up
 
 ## Standard Factory Features
 
@@ -25,31 +29,37 @@ Since Vid-Cut is based on Chromium core and HTML5 video player, not all ffmpeg s
 
 For formats not supported by Chromium, Vid-Cut uses fast real-time transcoding and playback technology, which allows play all videos which ffmpeg can be decoded, and the cut result is still lossless. But unfortunately, especially in the case of large video files, the efficiency of this method (accurately in terms of tracking fluency) is still not the same as the native support format.
 
-## Develop and Build
-
-### 1. Install NODE & NPM
-
-### 2. Install Dependencies
+A prefered electron mirror is at https://npm.taobao.org/mirrors/electron/. To use it set the environment:
 
 ```
 export ELECTRON_MIRROR="https://npm.taobao.org/mirrors/electron/"
+```
+
+## Installation Steps
+
+### 1. Dependencies (Arch Linux)
+
+```
+yay -S libxcrypt-compat electron nvm node ruby
+```
+
+### 2. Install with NPM
+
+```
 npm install
 ```
 
-### 3. Run and Debug
+---
+
+## Development/Test-Run
 
 ```
 npm start
 ```
 
-If you have problems when opening video files, try the following commands:
+---
 
-```
-chmod +x app/bin/*
-sudo apt install -y libmediainfo-dev
-```
-
-### 4. Build by Platform
+## Build by Platform
 
 ```
 npm run build:linux
