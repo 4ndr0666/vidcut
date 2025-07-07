@@ -4,8 +4,8 @@
     "description": "Fast and lossless video cutter and merger",
     "author": {
         "name": "4ndr0666",
-        "email": "01_dolorloftier@icloud.com",
-      },
+        "email": "01_dolorloftier@icloud.com"
+    },
     "repository": "github:4ndr0666/vidcut",
     "copyright": "Copyright (c) 2024-2025",
     "license": "MIT",
@@ -29,11 +29,11 @@
         }
     },
     "devDependencies": {
-        "electron": "23.1.0",
-        "electron-builder": "^23.6.0"
+        "electron": "^37.2.0",
+        "electron-builder": "^26.0.12"
     },
     "dependencies": {
-        "string-to-stream": "^3.0.1",
-        "@electron/remote": "^2.0.10"
+        "@electron/remote": "^2.0.10",
+        "string-to-stream": "^3.0.1"
     }
 }
