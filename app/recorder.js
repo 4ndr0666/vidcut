@@ -1,3 +1,4 @@
+// app/recorder.js
 const electron = require('electron')
 const outputPath = require('@electron/remote').getGlobal('desktop')
 const ffmpeg = require('./ffmpeg')
@@ -5,11 +6,15 @@ const ffmpeg = require('./ffmpeg')
 module.exports = class {
   constructor() {
     this.container = $(`
-      <div class="recorder"><div>
-        <div class="duration">00:00:00.00</div>
-        <button class="start">Start</button>
-        <button class="stop">Stop</button>
-      </div></div>
+      <div class="recorder" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 100;">
+        <div style="background: var(--bg-glass-panel); backdrop-filter: blur(12px); border: 1px solid var(--accent-cyan-border-idle); padding: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);">
+          <div class="duration" style="font-family: var(--font-display); font-size: 2rem; color: var(--accent-cyan); text-shadow: 0 0 10px var(--glow-cyan-active);">00:00:00.00</div>
+          <div style="display: flex; gap: 1rem;">
+            <button class="hud-button start">Start</button>
+            <button class="hud-button stop" style="display: none;">Stop</button>
+          </div>
+        </div>
+      </div>
     `)
 
     this.duration = this.container.$('.duration')
@@ -52,12 +57,12 @@ module.exports = class {
 
   onmaskclick(e) {
     if (e.currentTarget === e.target) {
-      this.container.classList.remove('visible')
+      this.container.style.display = 'none'
     }
   }
 
   show() {
-    this.container.classList.add('visible')
+    this.container.style.display = 'flex'
   }
 
 }

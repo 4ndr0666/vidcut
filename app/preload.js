@@ -1,3 +1,4 @@
+// app/preload.js
 /**
  * --------------------------------------------------------
  * Preload and Enhancements
@@ -10,12 +11,12 @@
 globalThis.addEventListener('DOMContentLoaded', () => {
 
   // Create elements for alert
-  const message = $('<div class="message"><div></div></div>')
+  const message = $(`<div class="message" style="display: none; position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 1000; background: var(--bg-glass-panel); backdrop-filter: blur(12px); border: 1px solid var(--accent-cyan-border-idle); color: var(--accent-cyan); padding: 1rem 2rem; font-family: var(--font-body); box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);"><div></div></div>`)
   message.content = message.$('div')
   document.body.appendChild(message)
 
   // Create elements for loading
-  const loading = $('<div class="loading"><div class="loader"></div><div class="pointer"></div></div>')
+  const loading = $(`<div class="loading" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 999; color: var(--accent-cyan); font-family: var(--font-display);"><div class="loader">Loading... </div><div class="pointer"></div></div>`)
   loading.pointer = loading.$('.pointer')
   document.body.appendChild(loading)
 
@@ -23,12 +24,12 @@ globalThis.addEventListener('DOMContentLoaded', () => {
   Object.assign(window, {
     alert(text) {
       message.content.innerHTML = text
-      message.content.classList.add('visible')
+      message.style.display = 'block'
 
       // Auto hide
       if (message.timer) clearTimeout(message.timer)
       message.timer = setTimeout(function() {
-        message.content.classList.remove('visible')
+        message.style.display = 'none'
       }, 3000)
     },
 
@@ -37,8 +38,8 @@ globalThis.addEventListener('DOMContentLoaded', () => {
         loading.style.display = 'none'
         loading.pointer.innerHTML = ''
       } else {
-        loading.style.display = 'block'
-        loading.pointer.innerHTML = Number.isInteger(progress) ? progress : ''
+        loading.style.display = 'flex'
+        loading.pointer.innerHTML = Number.isInteger(progress) ? progress + '%' : ''
       }
     }
   })

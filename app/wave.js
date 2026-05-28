@@ -1,3 +1,4 @@
+// app/wave.js
 module.exports = class {
 
   constructor(audioElement, canvasElement, options) {
@@ -11,7 +12,7 @@ module.exports = class {
       maxHeight: 160,
       minHeight: 1,
       spacing: 1,
-      color: '#ff422d',
+      color: '#00E5FF', // Modified for Electric-Glass spec
       verticalAlign: 'middle',
     }, options)
 

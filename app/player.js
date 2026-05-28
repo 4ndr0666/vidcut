@@ -1,3 +1,4 @@
+// app/player.js
 const { app } = require('@electron/remote')
 const Wave = require('./wave')
 
@@ -37,10 +38,12 @@ module.exports = class {
       if (video.paused) {
         if (video.ended) video.seek(0)
         video.play()
-        playBtn.className = 'pause'
+        playBtn.className = 'hud-button pause active'
+        playBtn.innerHTML = '⏸'
       } else {
         video.pause()
-        playBtn.className = 'play'
+        playBtn.className = 'hud-button play'
+        playBtn.innerHTML = '▶'
       }
     }
 
@@ -115,7 +118,7 @@ module.exports = class {
     }
 
     video.oncanplay = () => {
-      if (playBtn.className == 'pause') {
+      if (playBtn.classList.contains('pause')) {
         video.play()
       }
     }
@@ -127,7 +130,8 @@ module.exports = class {
 
     video.onended = () => {
       video.pause()
-      playBtn.className = 'play'
+      playBtn.className = 'hud-button play'
+      playBtn.innerHTML = '▶'
     }
 
     video.onerror = () => {
@@ -155,7 +159,7 @@ module.exports = class {
       createSegment()
     }
 
-    document.onkeyup = function(e) {
+    document.onkeyup = (e) => {
       e.preventDefault()
       if (video.getDuration() === undefined) return
       if (e.keyCode === 32) return playBtn.onclick()   // SPACE
@@ -189,7 +193,8 @@ module.exports = class {
     progress.style.left = 0
     segment.style.left = 0
     segment.style.right = '100%'
-    playBtn.className = 'play'
+    playBtn.className = 'hud-button play'
+    playBtn.innerHTML = '▶'
     duration.innerHTML = '00:00:00.000'
     segmentStartTime.value = '00:00:00.000'
     segmentEndTime.value = '00:00:00.000'
@@ -205,6 +210,8 @@ module.exports = class {
     cutEndBtn.disabled = bool
     segmentStartTime.disabled = bool
     segmentEndTime.disabled = bool
+    slowDownBtn.disabled = bool
+    speedUpBtn.disabled = bool
   }
 
 }
