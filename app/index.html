@@ -2,13 +2,24 @@
 <html>
   <head>
     <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&family=Orbitron:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="./main.css">
   </head>
 
   <body>
     <main>
       <video></video><canvas></canvas>
-      <div id="open-file">Open or Drop Video</div>
+      <div id="open-file">
+        <svg class="glyph-icon" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+          <path class="glyph-ring-1" d="M 64,12 A 52,52 0 1 1 63.9,12 Z" />
+          <path class="glyph-ring-2" d="M 64,20 A 44,44 0 1 1 63.9,20 Z" />
+          <path class="glyph-hex" d="M64 30 L91.3 47 L91.3 81 L64 98 L36.7 81 L36.7 47 Z" />
+          <text x="64" y="67" text-anchor="middle" dominant-baseline="middle" font-size="56" font-weight="700">Ψ</text>
+        </svg>
+        <span>Initialize Video Source</span>
+      </div>
     </main>
 
     <div class="toolbar">
@@ -19,29 +30,29 @@
       </div>
 
       <div class="controls">
-        <button class="video-start" title="To the start of video" disabled></button>
-        <button class="segment-start" title="To the start of segment" disabled></button>
+        <button class="hud-button video-start" title="To the start of video" disabled>|◀</button>
+        <button class="hud-button segment-start" title="To the start of segment" disabled>[</button>
         <input id="segment-start-time" maxlength="12" value="00:00:00.000" disabled/>
-
-        <button class="cut-start" title="Cut the start of segment" disabled></button>
-	<button class="slow-down">Slow</button>
-        <button class="speed-up">Fast</button>
-	<button class="play" disabled></button>
-        <button class="cut-end" title="Cut the end of segment" disabled></button>
-
+        <button class="hud-button cut-start" title="Cut the start of segment" disabled>✂ Start</button>
+        
+        <button class="hud-button slow-down" title="Decrease playback rate" disabled>⏪</button>
+        <button class="hud-button play" disabled>▶</button>
+        <button class="hud-button speed-up" title="Increase playback rate" disabled>⏩</button>
+        
+        <button class="hud-button cut-end" title="Cut the end of segment" disabled>✂ End</button>
         <input id="segment-end-time" maxlength="12" value="00:00:00.000" disabled/>
-        <button class="segment-end" title="To the end of segment" disabled></button>
-        <button class="video-end" title="To the end of video" disabled></button>
+        <button class="hud-button segment-end" title="To the end of segment" disabled>]</button>
+        <button class="hud-button video-end" title="To the end of video" disabled>▶|</button>
       </div>
 
       <div class="features">
-        <button class="capture" title="Capture Frame as JPG" disabled></button>
-        <button class="extract" title="Extract Audio as MP3" disabled></button>
-        <button class="convert" title="Convert Segment as MP4" disabled></button>
-        <button class="cut" title="Lossless Cut" disabled></button>
-        <button class="open-files" title="Open Videos to Merge"></button>
-        <button class="open-record" title="Record Screen"></button>
-        <button class="help" title="Online Help"></button>
+        <button class="hud-button capture" title="Capture Frame as JPG" disabled>Capture</button>
+        <button class="hud-button extract" title="Extract Audio as MP3" disabled>Extract</button>
+        <button class="hud-button convert" title="Convert Segment as MP4" disabled>Convert</button>
+        <button class="hud-button cut" title="Lossless Cut" disabled>FLAWLESS CUT</button>
+        <button class="hud-button open-files" title="Open Videos to Merge">Merge Files</button>
+        <button class="hud-button open-record" title="Record Screen">Record</button>
+        <button class="hud-button help" title="Online Help">Help</button>
       </div>
     </div>
 
