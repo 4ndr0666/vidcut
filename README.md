@@ -1,15 +1,12 @@
-# ⚡ VID-CUT : ARCH LINUX / WAYLAND EDITION ⚡
+<div align="center">
+       ─── ⊰ 💀 • - ⦑ VID-CUT // 4NDR0666OS ⦒ - • 💀 ⊱ ───
+</div> 
 
-```text
-       :::     ::: ::::::::::: :::::::::         ::::::::  :::    ::: ::::::::::: 
-      :+:     :+:     :+:     :+:    :+:       :+:    :+: :+:    :+:     :+:      
-     +:+     +:+     +:+     +:+    +:+       +:+        +:+    +:+     +:+       
-    +#+     +:+     +#+     +#+    +:+       +#+        +#+    +:+     +#+        
-    +#+   +#+      +#+     +#+    +#+       +#+        +#+    +#+     +#+         
-    #+#+#+#       #+#     #+#    #+#       #+#    #+# #+#    #+#     #+#          
-      ###     ########### #########         ########   ########      ###          
-
-```
+<div align="center">
+  <a href="[https://4ndr0666.github.io/4ndr0site](https://github.com/4ndr0666/vidcut" target="_blank">
+    <img src="app/assets/vidcut.png" alt="Vidcut" />
+  </a>
+</div>
 
 **Vid-Cut** is a hyper-optimized, lossless video cutter, merger, and Wayland-native screen recorder built exclusively for Arch Linux environments. Originally a fork of Flawless-Cut, this repository has undergone a total architectural overhaul to strip away legacy Windows bloated logic, replacing it with a heavily styled, terminal-inspired "Electric-Glass" UI and native integrations for `wf-recorder` under Wayland compositors (like Hyprland and Sway).
 
