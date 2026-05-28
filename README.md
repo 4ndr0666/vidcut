@@ -70,16 +70,17 @@ You must install the following packages via `pacman` and the AUR:
 
 ```bash
 # Core execution dependencies
-sudo pacman -S ffmpeg mediainfo nodejs npm
+ffmpeg mediainfo nodejs npm
 
 # Wayland screen recording dependencies
-sudo pacman -S wf-recorder slurp
+wf-recorder slurp
 
 # Arch Linux specific node/electron build compatibilities
-yay -S libxcrypt-compat nvm
+libxcrypt-compat nvm
 
+# One-liner
+sudo pacman -S ffmpeg mediainfo nodejs npm wf-recorder slurp && yay -S libxcrypt-compat nvm
 ```
-
 *Note: Ensure your `nvm` environment is properly sourced in your `.bashrc` or `.zshrc` prior to executing npm installs.*
 
 ---
