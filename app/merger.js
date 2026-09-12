@@ -1,4 +1,3 @@
-// app/merger.js
 const { basename } = require('path')
 
 module.exports = class {

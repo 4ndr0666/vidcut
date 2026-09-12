@@ -1,4 +1,3 @@
-// app/wave.js
 module.exports = class {
 
   constructor(audioElement, canvasElement, options) {

@@ -24,6 +24,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true, // Make sure integrate node in renderer.js
       contextIsolation: false,
+      sandbox: false, // CRITICAL: Fixes the 'require is not defined' crash in Electron 20+
       preload: path.join(__dirname, 'preload.js')
     }
   })
@@ -31,7 +32,7 @@ function createWindow() {
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, 'index.html'))
 
-  // Open the DevTools.
+  // Open the DevTools for isolated debugging.
   // mainWindow.webContents.openDevTools()
 
   // Hide window instead of minimize if tray exists

@@ -2,9 +2,9 @@ const { execFile } = require('child_process')
 const stringToStream = require('string-to-stream')
 const path = require('path')
 
-const postfix = process.platform == 'win32' ? '.exe' : '';
-const ffmpeg = path.join(__dirname, 'bin/ffmpeg' + postfix)
-const mediainfo = path.join(__dirname, 'bin/mediainfo' + postfix)
+// Arch Linux exclusively relies on system binaries
+const ffmpeg = path.join(__dirname, 'bin/ffmpeg')
+const mediainfo = path.join(__dirname, 'bin/mediainfo')
 
 function ffmpegCommand(args, options) {
   loading(true)
@@ -36,6 +36,18 @@ function ffmpegCommand(args, options) {
   return process
 }
 
+// Native Wayland Screen Recording Spawner
+function wfRecorderCommand(args, options) {
+  loading(true)
+  const process = execFile('wf-recorder', args, options, (error, _stdout, stderr) => {
+    loading(false)
+    if (error && !error.killed) {
+      alert(`wf-recorder error: ${error.message}`)
+    }
+  })
+  return process
+}
+
 function parseSegment(startTime, endTime) {
   const start = parseDuration(startTime)
   const end = parseDuration(endTime)
@@ -60,9 +72,6 @@ module.exports = {
     const segment = parseSegment(startTime, endTime)
     if (!segment) return
 
-    // -i 放在 -ss 之前表示不使用关键帧技术；-i 放在 -ss 之后表示使用关键帧技术
-    // 不使用关键帧剪切后视频开头可能存在几秒定格画面；使用关键帧截取速度快，但时间不精确，
-    // 并且如果结尾不是关键帧，则可能出现一段空白（参数 avoid_negative_ts 可解决）
     return ffmpegCommand([
       '-ss', segment.start, '-t', segment.duration, '-accurate_seek', '-i', videoPath,
       '-vcodec', 'copy', '-acodec', 'copy', '-avoid_negative_ts', 1, '-y', outputFile
@@ -74,7 +83,6 @@ module.exports = {
     const segment = parseSegment(startTime, endTime)
     if (!segment) return
 
-    // crf=18 is very close to lossless
     return ffmpegCommand([
       '-i', videoPath, '-ss', segment.start, '-t', segment.duration,
       '-c:v', 'libx264', '-preset:v', 'veryfast', '-crf', 18, '-y', outputFile
@@ -116,41 +124,27 @@ module.exports = {
     return process
   },
 
+  // Completely stripped of win32 gdigrab runtime scaffolding
   async recordVideo(outputPath) {
-    const outputFile = outputPath + '\\screen-record-' + (new Date()).format() + '.mp4'
-    const audioDevice = await this.getAudioDevice()
-    const audioArgs = audioDevice ? ['-f', 'dshow', '-i', 'audio=' + audioDevice] : []
-
-    return ffmpegCommand([
-      '-f', 'gdigrab', '-i', 'desktop', ...audioArgs,
-      '-c:v', 'libx264', '-c:a', 'aac', '-q:a', 0,
-      '-y', outputFile
-    ])
+    const timestamp = (new Date()).toISOString().replace(/[-:T]/g, '').slice(2, 14);
+    const outputFile = path.join(outputPath, `box-${timestamp}.mp4`);
+    
+    return wfRecorderCommand([
+      '--audio', 
+      '--no-damage', 
+      '--framerate', '60', 
+      '-c', 'libx264', 
+      '-p', 'qp=0', 
+      '-f', outputFile
+    ]);
   },
 
   fastCodec(videoPath, fileSize, startTime) {
-    // -frag_duration: Create fragments that are duration microseconds long.
     return ffmpegCommand([
       '-ss', startTime, '-i', videoPath, '-preset:v', 'ultrafast',
       '-f', 'mp4', '-frag_duration', 1000000, 'pipe:1',
     ], {
       encoding: 'buffer', maxBuffer: Number(fileSize),
-    })
-  },
-
-  getAudioDevice() {
-    return new Promise(resolve => {
-      execFile(ffmpeg, ['-list_devices', 'true', '-f', 'dshow', '-i', 'dummy'], (_error, _stdout, stderr) => {
-        const lines = stderr.split('\n')
-        lines.some((line, i) => {
-          let match = /^\[dshow.+\] DirectShow audio devices$/.exec(line.trim())
-          if (match) {
-            match = /^\[dshow.+\] +"(.+)"$/.exec(lines[i+1].trim())
-            if (match) resolve(match[1])
-            return true
-          }
-        })
-      })
     })
   },
 
@@ -164,12 +158,10 @@ module.exports = {
         if (stdout.trim()) {
           const mediaTrack = JSON.parse(stdout).media.track
           const mediaInfo = {}
-          // @type: General, Video, Audio, ...
           mediaTrack.forEach(track => mediaInfo[track['@type']] = track)
           resolve(mediaInfo)
         }
       })
     })
   }
-
 }
