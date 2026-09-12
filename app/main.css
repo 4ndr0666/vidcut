@@ -1,4 +1,3 @@
-/* app/main.css */
 :root {
   /* Foundations */
   --bg-dark-base: #050A0F;
@@ -124,6 +123,7 @@ video {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  box-sizing: border-box;
 }
 
 /* Timeline */
@@ -134,12 +134,15 @@ video {
   color: var(--text-secondary);
   position: relative;
   height: 24px;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
 }
 
 #currentTime, #duration {
   color: var(--text-cyan-active);
   font-weight: 700;
   margin: 0 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 #progress, #segment {
@@ -180,6 +183,7 @@ video {
   background-color: rgba(0, 0, 0, 0.3);
   cursor: pointer;
   transition: all 300ms ease-in-out;
+  box-sizing: border-box;
 }
 
 .hud-button:hover:not(:disabled) {
@@ -221,6 +225,8 @@ input[type="text"], input[id^="segment"] {
   padding: 0.5rem;
   text-align: center;
   width: 130px;
+  font-variant-numeric: tabular-nums;
+  box-sizing: border-box;
 }
 
 input:focus {
@@ -230,9 +236,11 @@ input:focus {
 
 .controls, .features {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
+  box-sizing: border-box;
 }
 
 /* Contingency Fallback */

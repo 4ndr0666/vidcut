@@ -1,4 +1,3 @@
-// app/preload.js
 /**
  * --------------------------------------------------------
  * Preload and Enhancements

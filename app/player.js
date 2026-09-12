@@ -1,4 +1,3 @@
-// app/player.js
 const { app } = require('@electron/remote')
 const Wave = require('./wave')
 

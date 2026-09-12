@@ -1,4 +1,3 @@
-// app/recorder.js
 const electron = require('electron')
 const outputPath = require('@electron/remote').getGlobal('desktop')
 const ffmpeg = require('./ffmpeg')
