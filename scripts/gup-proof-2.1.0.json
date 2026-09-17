@@ -1,0 +1,308 @@
+{
+  "protocol": "GUP v5.2",
+  "baseline": "5323e9b",
+  "candidate": "vidcut 2.1.0 working tree",
+  "atomized_pairs": [
+    "ffmpeg.js",
+    "renderer.js",
+    "main.js"
+  ],
+  "counts": {
+    "UNCHANGED": 11,
+    "CHANGED": 13,
+    "NEW": 31,
+    "MISSING": 0
+  },
+  "diff": [
+    {
+      "unit": "ffmpeg.buildArgs",
+      "verdict": "UNCHANGED",
+      "hash": "c15e32edb3c8d87348e66eca2c403213b36f32f077aea2513be47e83700a9ded"
+    },
+    {
+      "unit": "ffmpeg.cancel",
+      "verdict": "UNCHANGED",
+      "hash": "a171f02245ce46108fbdf93299ed34deb1d424532231bb3c5bc6689ab1124505"
+    },
+    {
+      "unit": "ffmpeg.capture",
+      "verdict": "NEW",
+      "hash": "b414348196a4268a4cd6703dc88effabb7d8839d4263fac992f584c8c6ffa4f5"
+    },
+    {
+      "unit": "ffmpeg.captureArgs",
+      "verdict": "NEW",
+      "hash": "6717c6c355f815f58e730dcf5b84bd5a85ddb577cbda082f4fede78199556543"
+    },
+    {
+      "unit": "ffmpeg.convert",
+      "verdict": "NEW",
+      "hash": "c976a74d162788eec455e36621345a054ae21e1449ae3b4b4152bd7c82253401"
+    },
+    {
+      "unit": "ffmpeg.convertArgs",
+      "verdict": "NEW",
+      "hash": "0f43c1a7334e2c9e8322e45c54c8a884eed2ecd471e76b215c599645a510fa0d"
+    },
+    {
+      "unit": "ffmpeg.cut",
+      "verdict": "CHANGED",
+      "baseline_hash": "2d4f6aa9508052b42bec6b523f580a75a6ce4765c57b7d0b7fc0a502ca37d1ed",
+      "candidate_hash": "d04d6380bc5f0b93bc6940cfc0f63addc88b4dbfe11697cb318e1cb7f6aa6ea9"
+    },
+    {
+      "unit": "ffmpeg.extract",
+      "verdict": "NEW",
+      "hash": "03b57209b866faaea75170acae623eae51c7078ab8becc071a60a47a9737483c"
+    },
+    {
+      "unit": "ffmpeg.extractArgs",
+      "verdict": "NEW",
+      "hash": "37b0f35b391c00a248d0546fb15af2b3414972e10e4a014d93ad054b4966d512"
+    },
+    {
+      "unit": "ffmpeg.fastCodec",
+      "verdict": "NEW",
+      "hash": "4629e84a9cc10e67e900a153de8328d9adceb0756d5dc828ae90bba7249846be"
+    },
+    {
+      "unit": "ffmpeg.fatal",
+      "verdict": "UNCHANGED",
+      "hash": "f472ea4e268daf54e566278ca6ebfde1682e7970836b315d255325c0434032d4"
+    },
+    {
+      "unit": "ffmpeg.killAll",
+      "verdict": "UNCHANGED",
+      "hash": "1e26bf87f2794ad1380feb097b21eb5284096ac71c55711ccdf1b84943b29469"
+    },
+    {
+      "unit": "ffmpeg.merge",
+      "verdict": "NEW",
+      "hash": "f342d138c6b45c34ea7e4104a36675e0386044acadf5070d3452e7de48c80c44"
+    },
+    {
+      "unit": "ffmpeg.mergeArgs",
+      "verdict": "NEW",
+      "hash": "b189b2448f1b340df6044b4ba3aee9d53be969794706b7beaea91050916136d4"
+    },
+    {
+      "unit": "ffmpeg.parseStreams",
+      "verdict": "NEW",
+      "hash": "bcb1292e70a55a70c65bbb2855b228d066e9d187f17f4cbd207e6d7f92a72076"
+    },
+    {
+      "unit": "ffmpeg.probe",
+      "verdict": "NEW",
+      "hash": "b30b32f8597adf93c8c23fd439cd69fa3c99d733c6c246ef78b40284712494d7"
+    },
+    {
+      "unit": "ffmpeg.probeRun",
+      "verdict": "NEW",
+      "hash": "08b8aebff68be66f1367bd8a9cd00151bb4cfbea7e1178db07be51cfb2f3d173"
+    },
+    {
+      "unit": "ffmpeg.resolveBinary",
+      "verdict": "UNCHANGED",
+      "hash": "efc2df4061f7560d01afb10c7240a4afd6bc8cd00985edad234c7dff1009b7cd"
+    },
+    {
+      "unit": "ffmpeg.runOnce",
+      "verdict": "CHANGED",
+      "baseline_hash": "6844973c5f2994b3aefebbd6374315d4e2d72b63eee5e80550e9705e4f1aeaab",
+      "candidate_hash": "ccb930fced8c7b303df77045fef82c6b333d741e4cf5f188a5f1f473c78166de"
+    },
+    {
+      "unit": "ffmpeg.validateSegment",
+      "verdict": "NEW",
+      "hash": "a674ba4938f79aa9c79fa1acf2e16fc16992964ac138be67eac430e91258f468"
+    },
+    {
+      "unit": "renderer.applyInput",
+      "verdict": "NEW",
+      "hash": "5eeea25ac590c2cb98835144bf8ffb864aa642a809b1512ec711463deb41b594"
+    },
+    {
+      "unit": "renderer.clipValid",
+      "verdict": "UNCHANGED",
+      "hash": "7df00ca41debd401ea3e7cc835fede90f55d264a564ed84ef339d5ff54c51200"
+    },
+    {
+      "unit": "renderer.closeSheet",
+      "verdict": "NEW",
+      "hash": "3180927795b0a9b2e353b2825ba3a1f66b8b70b553d9dea9367d549670681837"
+    },
+    {
+      "unit": "renderer.closeSheets",
+      "verdict": "NEW",
+      "hash": "821e84d19921cde36004a7d2574e4b00a912ce6f0677be2b28bad12ea051d6bd"
+    },
+    {
+      "unit": "renderer.effDuration",
+      "verdict": "NEW",
+      "hash": "3baa8e9822f8881f3841283b33a20ee008da9aa023431f19d1b79cbec7a26caf"
+    },
+    {
+      "unit": "renderer.effTime",
+      "verdict": "NEW",
+      "hash": "8675f7d5ee21d9a178e4d74869b29fde59b8272124c467e074aab2613155b106"
+    },
+    {
+      "unit": "renderer.endScrub",
+      "verdict": "CHANGED",
+      "baseline_hash": "3fd2df095c1869ad0d27426c4f5cb3d221e7fc2cb986e106f044818e62316df8",
+      "candidate_hash": "eb54a09f8fe5be0f3f2224915768e2a664f119baaa72f6ef800a3db08026d625"
+    },
+    {
+      "unit": "renderer.fmt",
+      "verdict": "UNCHANGED",
+      "hash": "59a58380a0f84d2f2e041265f41924cf303f4cccbf9e9f95d4949c60153e0db6"
+    },
+    {
+      "unit": "renderer.formatTime",
+      "verdict": "NEW",
+      "hash": "5a12c642eaaa8bebdd9016f75fdf020f6005fede8d3d877682e49e1b76818657"
+    },
+    {
+      "unit": "renderer.loadFile",
+      "verdict": "CHANGED",
+      "baseline_hash": "e9e0089ceee766f85b9e8fc3c5e98804cca593e3482ebd83f9677d276e73f55e",
+      "candidate_hash": "f37fdbfbc8f0eb85c75b02b76e77b817d418d902de78808314b6b608f0025198"
+    },
+    {
+      "unit": "renderer.markEnd",
+      "verdict": "CHANGED",
+      "baseline_hash": "5e4e4ef0682c5c9ba7c9b94dd19819565926b27831a0a874d26039c92c723e1b",
+      "candidate_hash": "7c8a4ddf292f70d1ec9a19718dcf648ac8c6db91540aaf89d75a5c16562c8017"
+    },
+    {
+      "unit": "renderer.markStart",
+      "verdict": "CHANGED",
+      "baseline_hash": "eeec281f15bf618a34844c32a32f08d511f148ea2a52008ba595d15d29bec5d7",
+      "candidate_hash": "d1921dd6dd13ec9c6557c0d97ecb44811825246d2907646d8bfa75c4e6c15400"
+    },
+    {
+      "unit": "renderer.nudge",
+      "verdict": "CHANGED",
+      "baseline_hash": "7b547371b17f308d71f96ad875d026b41a2cbf9e9bd703e1b4e70cd8f3ad974e",
+      "candidate_hash": "e384a787d3eaeebf4294773bcd9b1a3a118556d9cf34cb985e97175146505ea2"
+    },
+    {
+      "unit": "renderer.openDialog",
+      "verdict": "UNCHANGED",
+      "hash": "7262605044f938dd71fef898c24dd6e0042de670c8a4f25066a685f887dc52d5"
+    },
+    {
+      "unit": "renderer.openSheet",
+      "verdict": "NEW",
+      "hash": "36d40aad6ae1e8619ed8fd38945e697a2a9c9d1fc072f81aabbac33bfba6275f"
+    },
+    {
+      "unit": "renderer.openStream",
+      "verdict": "NEW",
+      "hash": "54403019dd0ad174203062f116aed4c44b2294cd3a41e1fda96b38df39636e96"
+    },
+    {
+      "unit": "renderer.parseTime",
+      "verdict": "NEW",
+      "hash": "624b3ded4774ef03ea3b26cb418c693419d5cbc18777b8fc98c0da1d8c2b4821"
+    },
+    {
+      "unit": "renderer.pathFromFile",
+      "verdict": "UNCHANGED",
+      "hash": "02a73bffb4c3b3bc59cc04b15b34d93dc08995ee3b26ba055352bb911e057384"
+    },
+    {
+      "unit": "renderer.pointerTime",
+      "verdict": "CHANGED",
+      "baseline_hash": "5eee43fc315277613ee983840c1f4602ea9ab55e44899c0b9720fa0db9112668",
+      "candidate_hash": "cdcd9d8428906347a55326574e80833701061a25f555d1abf2c8e95178d2809b"
+    },
+    {
+      "unit": "renderer.probeTitle",
+      "verdict": "NEW",
+      "hash": "caa3bc26d227ec1096db6f09e4bee0d046f9a5e401099d54888e950b1ffd84c7"
+    },
+    {
+      "unit": "renderer.render",
+      "verdict": "CHANGED",
+      "baseline_hash": "ab35a68bd5a08d9629da9759f0ed01c0000b52cde76e5d2193cce6eac1fe8b50",
+      "candidate_hash": "ac01bd0c39352ec332f1a3d08bac739016b713d0caf9fc50ba3d8654101b4d64"
+    },
+    {
+      "unit": "renderer.seekTo",
+      "verdict": "NEW",
+      "hash": "83f26b2190c5ed63821bb647288ad5cc1f7ad4205e2c1b40a05fbd9d3ab6d478"
+    },
+    {
+      "unit": "renderer.setBusy",
+      "verdict": "CHANGED",
+      "baseline_hash": "ae376ec2afa73433983aca491a6d5f24091db1f2c4942054f8405687f384fb69",
+      "candidate_hash": "9866ceeb3d46eb966edd0cbf08e361dad483eb98130785801cb83496215cfb0b"
+    },
+    {
+      "unit": "renderer.setRate",
+      "verdict": "NEW",
+      "hash": "d591564af325433fe82f566845a1daa63555e65804a94c0ea0422720c7ec2272"
+    },
+    {
+      "unit": "renderer.setStatus",
+      "verdict": "UNCHANGED",
+      "hash": "3410fe9edef92330e7053b744b4fa871d085ac301f833c77ffcb705151a63da2"
+    },
+    {
+      "unit": "renderer.startCut",
+      "verdict": "CHANGED",
+      "baseline_hash": "a16abdfb5ec60818bf922493ae9784bf8e302d37c4ca375edf29d7e81b641783",
+      "candidate_hash": "69729d329de6cc1a824d3bd2c294cc7cff7e0ffb3f3784f3c4758dff5d77215c"
+    },
+    {
+      "unit": "renderer.startTool",
+      "verdict": "NEW",
+      "hash": "d3e6db536e89990e5141c64bdfb5667e0aea9329a9c6a912d06e4ba86a1840b0"
+    },
+    {
+      "unit": "renderer.syncEnabled",
+      "verdict": "CHANGED",
+      "baseline_hash": "7b138b3f70705085cc4e2c53e131b098b65f8483f3e893118104154af1d5f3b9",
+      "candidate_hash": "1345103dd9febfbc43257ba9fdde2e1ef33b4f37d0b4d4c1406c6329ee5177bc"
+    },
+    {
+      "unit": "renderer.togglePlay",
+      "verdict": "UNCHANGED",
+      "hash": "f750434e077bf637b9b82cb60c2ae92da7bc74345a613eb3f3fc817d821222d3"
+    },
+    {
+      "unit": "renderer.updateAudioOnly",
+      "verdict": "NEW",
+      "hash": "d66e37e7365cbdd3e48aacef06697b2223ee71b8fa0f95776821258054d1295e"
+    },
+    {
+      "unit": "main.createTray",
+      "verdict": "NEW",
+      "hash": "ec432d04d390ecba7c07e741d3e167de700c397d885d0ae42af30b01c25ef730"
+    },
+    {
+      "unit": "main.createWindow",
+      "verdict": "CHANGED",
+      "baseline_hash": "d2a05a61efa35e4a1b9813ccd6f4d39e71085ca732d85226548e73f1f35b9d10",
+      "candidate_hash": "779c4fce870ba532562ff64af06fd4cd8228d15a8a9ad0109f0a935c9bf8ca9f"
+    },
+    {
+      "unit": "main.recordDir",
+      "verdict": "NEW",
+      "hash": "256eb8713241996a1235175f4353576a9a8ab9a0fb4d9dddc62ece07606397b4"
+    },
+    {
+      "unit": "main.removeTray",
+      "verdict": "NEW",
+      "hash": "cb4c1a4cff7fdefe1da344101dcc0cb77ffb3bb3abca05a0e54939188db8d639"
+    },
+    {
+      "unit": "main.send",
+      "verdict": "NEW",
+      "hash": "d96e2f6a394cdfe67dbf279ea313b25d678c8ec065e54fee1d9c7d35669b2927"
+    }
+  ],
+  "review_record": "scripts/gup-review-2.1.0.json",
+  "result": "PASS"
+}

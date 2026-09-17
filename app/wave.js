@@ -1,122 +1,127 @@
-module.exports = class {
+/* vidcut waveform — frequency visualizer for audio-only sources.
+ *
+ * The MediaElementSource is attached lazily on first use and ONLY
+ * for native (file://) playback: routing the element through Web
+ * Audio is irreversible, and a cross-origin stream (the http
+ * transcode fallback) would be muted by Chromium's taint rules — so
+ * streams never attach. The canvas tracks the stage size with
+ * devicePixelRatio crispness and draws mirrored bars blooming from
+ * the center out, cyan on glass. */
 
-  constructor(audioElement, canvasElement, options) {
-    this.audioElement = audioElement
-    this.canvasElement = canvasElement
-    this.canvas = canvasElement.getContext('2d')
-    this.options = Object.assign({
-      accuracy: 256,
-      width: 1024,
-      height: 600,
-      maxHeight: 160,
-      minHeight: 1,
-      spacing: 1,
-      color: '#00E5FF', // Modified for Electric-Glass spec
-      verticalAlign: 'middle',
-    }, options)
-
+class Wave {
+  constructor(canvas) {
+    this.canvas = canvas
+    this.ctx = canvas.getContext('2d')
+    this.audioContext = null
+    this.analyser = null
+    this.data = null
+    this.attached = false
+    this.visible = false
     this.playing = false
-    this._init()
+    this.width = 0
+    this.height = 0
+    this.BARS = 64 // bars per side of the mirror
+
+    this._onResize = () => { if (this.visible) this.resize() }
+    window.addEventListener('resize', this._onResize)
+  }
+
+  /* Irreversible: once attached, the element's audio flows through
+   * the graph (analyser → destination). Call only for same-origin
+   * (file://) playback. */
+  attach(element) {
+    if (this.attached) return
+    this.attached = true
+    this.audioContext = new AudioContext()
+    const source = this.audioContext.createMediaElementSource(element)
+    this.analyser = this.audioContext.createAnalyser()
+    this.analyser.fftSize = 256
+    source.connect(this.analyser)
+    this.analyser.connect(this.audioContext.destination)
+    this.data = new Uint8Array(this.analyser.frequencyBinCount)
   }
 
   play() {
-    if (!this.playing) {
-      this.playing = true
-      this.canvasElement.style.display = 'block'
-      this._dance()
-    }
+    if (!this.attached || !this.visible) return
+    if (this.audioContext.state === 'suspended') this.audioContext.resume()
+    if (this.playing) return
+    this.playing = true
+    this.dance()
   }
 
   pause() {
     this.playing = false
   }
 
+  show() {
+    this.visible = true
+    this.canvas.hidden = false
+    this.resize()
+  }
+
   hide() {
-    this.canvasElement.style.display = 'none'
+    this.visible = false
+    this.playing = false
+    this.canvas.hidden = true
   }
 
-  setOptions(options) {
-    Object.assign(this.options, options)
+  isActive() {
+    return this.visible
   }
 
-  _init() {
-    const audioContext = new AudioContext()
-    const audioSource = audioContext.createMediaElementSource(this.audioElement)
+  destroy() {
+    window.removeEventListener('resize', this._onResize)
+    this.hide()
+  }
 
-    this.analyser = audioContext.createAnalyser()
-    audioSource.connect(this.analyser)
-    this.analyser.fftSize = this.options.accuracy * 2
-    this.analyser.connect(audioContext.destination)
-    this.freqByteData = new Uint8Array(this.analyser.frequencyBinCount)
-
+  /* Size the backing store to the actual stage (not a fixed 1024x600),
+   * keeping devicePixelRatio crispness. */
+  resize() {
+    const parent = this.canvas.parentElement
+    if (!parent) return
+    const rect = parent.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
     const dpr = window.devicePixelRatio || 1
-    this.canvas.canvas.width = this.options.width * dpr
-    this.canvas.canvas.height = this.options.height * dpr
-    this.canvas.scale(dpr, dpr)
+    this.canvas.width = Math.round(rect.width * dpr)
+    this.canvas.height = Math.round(rect.height * dpr)
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    this.width = rect.width
+    this.height = rect.height
   }
 
-  _dance() {
-    if (this.playing) {
-      this.analyser.getByteFrequencyData(this.freqByteData)
-      this._visualize(this.freqByteData)
-      requestAnimationFrame(() => this._dance())
+  dance() {
+    if (!this.playing || !this.visible || !this.attached) return
+    this.analyser.getByteFrequencyData(this.data)
+    this.visualize(this.data)
+    requestAnimationFrame(() => this.dance())
+  }
+
+  visualize(freq) {
+    const width = this.width
+    const height = this.height
+    this.ctx.clearRect(0, 0, width, height)
+    if (!width || !height) return
+
+    const bars = this.BARS
+    const step = Math.max(1, Math.floor(freq.length / bars))
+    const slot = width / (bars * 2)
+    const barWidth = Math.max(1, slot - 2)
+
+    for (let i = 0; i < bars; i++) {
+      let sum = 0
+      for (let k = 0; k < step; k++) sum += freq[i * step + k] || 0
+      const value = sum / step / 255
+      if (value <= 0.004) continue
+
+      const barHeight = Math.max(2, value * height * 0.5)
+      const y = (height - barHeight) / 2
+      const alpha = (0.35 + 0.65 * (i / bars)).toFixed(3)
+      this.ctx.fillStyle = `rgba(0, 229, 255, ${alpha})`
+      // Mirrored pair: low frequencies bloom from the center out.
+      this.ctx.fillRect(width / 2 - (i + 1) * slot + 1, y, barWidth, barHeight)
+      this.ctx.fillRect(width / 2 + i * slot + 1, y, barWidth, barHeight)
     }
   }
-
-  _visualize(freqByteData) {
-    const o = this.options
-    this.canvas.clearRect(0, 0, o.width, o.height)
-
-    const _freqByteData = [].concat(
-      Array.from(freqByteData).reverse().splice(o.accuracy / 2, o.accuracy / 2),
-      Array.from(freqByteData).splice(0, o.accuracy / 2)
-    )
-
-    _freqByteData.forEach((value, index) => {
-
-      const width = (o.width - o.accuracy * o.spacing) / o.accuracy
-      let left = index * (width + o.spacing)
-      o.spacing !== 1 && (left += o.spacing / 2)
-
-      let top, height = value / 256 * o.maxHeight
-      height = height < o.minHeight ? o.minHeight : height
-
-      switch (o.verticalAlign) {
-        case 'top':     top = 0; break
-        case 'bottom':  top = o.height - height; break
-        default:        top = (o.height - height) / 2; break
-      }
-
-      if (o.color instanceof Array) {
-        const linearGradient = this.canvas.createLinearGradient(left, top, left, top + height)
-        let pos
-
-        o.color.forEach((color, index) => {
-          if (color instanceof Array) {
-            pos = color[0]
-            color = color[1]
-          } else
-          if (index === 0 || index === o.color.length - 1) {
-            pos = index / (o.color.length - 1)
-          } else {
-            pos = index / o.color.length + 0.5 / o.color.length
-          }
-          linearGradient.addColorStop(pos, color)
-        })
-
-        this.canvas.fillStyle = linearGradient
-      } else {
-        this.canvas.fillStyle = o.color
-      }
-
-      if (index <= o.accuracy / 2) {
-        this.canvas.globalAlpha = 1 - (o.accuracy / 2 - 1 - index) / (o.accuracy / 2)
-      } else {
-        this.canvas.globalAlpha = 1 - (index - o.accuracy / 2) / (o.accuracy / 2)
-      }
-
-      this.canvas.fillRect(left, top, width, height)
-    })
-  }
-
 }
+
+module.exports = Wave

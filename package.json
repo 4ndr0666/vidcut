@@ -1,45 +1,54 @@
 {
-    "name": "vidcut",
-    "version": "1.0.1",
-    "description": "Fast and lossless video cutter and merger",
-    "author": {
-        "name": "4ndr0666",
-        "email": "01_dolorloftier@icloud.com"
+  "name": "vidcut",
+  "version": "2.2.0",
+  "description": "Fast, lossless video cutter, merger, converter and screen recorder",
+  "author": {
+    "name": "4ndr0666",
+    "email": "01_dolorloftier@icloud.com"
+  },
+  "repository": "github:4ndr0666/vidcut",
+  "copyright": "Copyright (c) 2024-2026",
+  "license": "MIT",
+  "main": "app/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node scripts/test-cut.js",
+    "test:server": "node scripts/test-server.js",
+    "smoke": "electron scripts/electron-smoke.js",
+    "visual": "electron scripts/visual-check.js",
+    "build:linux": "electron-builder -l",
+    "build:win": "electron-builder -w"
+  },
+  "build": {
+    "appId": "io.github.4ndr0666.vidcut",
+    "files": [
+      "app/**/*",
+      "!app/bin/*.exe",
+      "LICENSE",
+      "README.md"
+    ],
+    "asarUnpack": [
+      "app/bin/**"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
     },
-    "repository": "github:4ndr0666/vidcut",
-    "copyright": "Copyright (c) 2024-2026",
-    "license": "MIT",
-    "main": "app/main.js",
-    "scripts": {
-        "start": "electron .",
-        "build:linux": "electron-builder -l",
-        "build:win": "electron-builder -w"
-    },
-    "build": {
-        "appId": "vidcut",
-        "win": {
-            "target": [
-                "nsis"
-            ]
-        },
-        "linux": {
-            "target": [
-                "deb"
-            ],
-            "category": "Video"
-        }
-    },
-    "devDependencies": {
-        "electron": "^42.3.0",
-        "electron-builder": "^26.8.1"
-    },
-    "dependencies": {
-        "@electron/remote": "^2.1.3",
-        "string-to-stream": "^3.0.1"
-    },
-    "overrides": {
-        "debug": "4.4.3",
-        "once": "1.4.0",
-        "@types/node": "24.12.4"
+    "linux": {
+      "target": [
+        "deb"
+      ],
+      "category": "Video"
     }
+  },
+  "devDependencies": {
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1"
+  },
+  "overrides": {
+    "debug": "4.4.3",
+    "once": "1.4.0",
+    "@types/node": "24.12.4"
+  }
 }

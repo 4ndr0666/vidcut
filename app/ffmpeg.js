@@ -1,167 +1,378 @@
-const { execFile } = require('child_process')
-const stringToStream = require('string-to-stream')
+/* vidcut — ffmpeg supervision in the main process.
+ *
+ * One job slot, several job kinds: cut (lossless + re-encode fallback),
+ * convert (compatibility re-encode to MP4), extract (audio to MP3),
+ * capture (single frame to JPG) and merge (concat demuxer over stdin).
+ * The renderer never spawns processes — it sends IPC jobs here, so the
+ * OS-level lifecycle (cancel, quit) is fully owned by main.
+ *
+ * Paradigm: main-process orchestrator; the renderer is a pure UI. */
+
+const { spawn } = require('child_process')
+const fs = require('fs')
 const path = require('path')
 
-// Arch Linux exclusively relies on system binaries
-const ffmpeg = path.join(__dirname, 'bin/ffmpeg')
-const mediainfo = path.join(__dirname, 'bin/mediainfo')
+let active = null // { proc, kind } — a single supervised job at a time
+let cancelled = false
 
-function ffmpegCommand(args, options) {
-  loading(true)
-  const process = execFile(ffmpeg, args, options, (error, _stdout, stderr) => {
-    if (stderr instanceof Buffer) return
+/* Prefer the bundled binary (also resolves the packaged
+ * app.asar.unpacked layout), fall back to the system PATH. */
+function resolveBinary() {
+  const name = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
+  const bundled = path.join(__dirname, 'bin', name)
+  const unpacked = bundled.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
+  if (fs.existsSync(unpacked)) return unpacked
+  if (fs.existsSync(bundled)) return bundled
+  return name
+}
 
-    loading(false)
-    if (error) {
-      error = error.toString().trim()
-      error = error.substring(error.lastIndexOf('\n') + 1)
-      error = error.substring(error.lastIndexOf(':') + 1)
-      alert(error)
+/* ---- argument builders ---- */
+
+/* Input-seek (-ss before -i) resets timestamps, so -t measures the
+ * requested clip length. Only the first video and first audio track
+ * are mapped — both optional, so audio-only sources cut fine too. */
+function buildArgs(job, reencode) {
+  const args = [
+    '-y', '-hide_banner', '-nostdin',
+    '-ss', job.start.toFixed(3),
+    '-i', job.input,
+    '-t', job.duration.toFixed(3),
+    '-map', '0:v:0?', '-map', '0:a:0?',
+  ]
+  if (reencode) {
+    args.push(
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac', '-b:a', '192k',
+    )
+  } else {
+    args.push('-c', 'copy', '-avoid_negative_ts', 'make_zero')
+  }
+  args.push('-map_metadata', '0', job.output)
+  return args
+}
+
+/* Convert deliberately re-encodes: same mapping policy and encoder
+ * settings as the cut fallback, so anything that can be cut can also
+ * be converted (including audio-only sources). */
+function convertArgs(job) {
+  return [
+    '-y', '-hide_banner', '-nostdin',
+    '-ss', job.start.toFixed(3),
+    '-i', job.input,
+    '-t', job.duration.toFixed(3),
+    '-map', '0:v:0?', '-map', '0:a:0?',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p',
+    '-c:a', 'aac', '-b:a', '192k',
+    '-map_metadata', '0', job.output,
+  ]
+}
+
+/* MP3 VBR best quality — transparent at any source bitrate, which is
+ * why the original mediainfo bitrate lookup is not needed here. */
+function extractArgs(job) {
+  return [
+    '-y', '-hide_banner', '-nostdin',
+    '-ss', job.start.toFixed(3),
+    '-i', job.input,
+    '-t', job.duration.toFixed(3),
+    '-map', '0:a:0?', '-vn',
+    '-c:a', 'libmp3lame', '-q:a', '0',
+    '-map_metadata', '0', job.output,
+  ]
+}
+
+function captureArgs(job) {
+  return [
+    '-y', '-hide_banner', '-nostdin',
+    '-ss', job.at.toFixed(3),
+    '-i', job.input,
+    '-map', '0:v:0', '-vframes', '1', '-f', 'mjpeg', '-q:v', '2',
+    job.output,
+  ]
+}
+
+/* Concat demuxer over stdin — no temp list file, no shell involved.
+ * NOTE: -nostdin must NOT appear here; the list arrives on stdin. */
+function mergeArgs(job) {
+  return [
+    '-y', '-hide_banner',
+    '-f', 'concat', '-safe', '0', '-protocol_whitelist', 'file,pipe',
+    '-i', '-',
+    '-c', 'copy', '-map', '0', '-map_metadata', '0',
+    job.output,
+  ]
+}
+
+/* Escape single quotes for the concat demuxer's file-list syntax. */
+function concatList(paths) {
+  return paths.map(p => "file '" + p.replace(/'/g, "'\\''") + "'").join('\n') + '\n'
+}
+
+/* Spawn-level failures (ENOENT etc.) are fatal: no retry can fix a
+ * missing binary, so they skip the re-encode fallback. */
+function fatal(error) {
+  error.fatal = true
+  return error
+}
+
+/* ---- the supervised runner (shared by every job kind) ---- */
+
+function runOnce(args, job, onProgress) {
+  return new Promise((resolve, reject) => {
+    let proc
+    try {
+      proc = spawn(resolveBinary(), args, {
+        stdio: [job.stdinData ? 'pipe' : 'ignore', 'ignore', 'pipe'],
+        windowsHide: true,
+      })
+    } catch (error) {
+      return reject(fatal(error))
     }
+    active = { proc, kind: job.kind }
+
+    if (job.stdinData) {
+      // EPIPE on early exit surfaces through the close handler below;
+      // an error listener is required so the write never throws.
+      proc.stdin.on('error', () => {})
+      proc.stdin.end(job.stdinData)
+    }
+
+    let tail = ''
+    proc.stderr.on('data', chunk => {
+      const text = chunk.toString()
+      tail = (tail + text).slice(-4000) // memory-bounded error tail
+      if (!onProgress) return
+      // The stats line repeats "time=HH:MM:SS.ss" as the output grows;
+      // the last match in the chunk is the freshest position.
+      let match = null
+      const pattern = /time=(\d+):(\d+):(\d+(?:\.\d+)?)/g
+      let hit
+      while ((hit = pattern.exec(text))) match = hit
+      if (match && Number.isFinite(job.duration) && job.duration > 0) {
+        const seconds = Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
+        onProgress(Math.max(0, Math.min(1, seconds / job.duration)))
+      }
+    })
+
+    proc.on('error', error => {
+      active = null
+      reject(fatal(error))
+    })
+
+    proc.on('close', code => {
+      active = null
+      if (code === 0) return resolve()
+      if (cancelled) return reject(new Error('Cancelled'))
+      const reason = tail.trim().split('\n').slice(-5).join('\n')
+      reject(new Error(`ffmpeg exited with code ${code}${reason ? '\n' + reason : ''}`))
+    })
   })
+}
 
-  process.stderr.on('data', stderr => {
-    const match = / time\=(\d{2}:\d{2}:\d{2}\.\d{2,3}) /.exec(stderr)
-    if (match) {
-      process.ontimeupdate && process.ontimeupdate(match[1])
+/* ---- input validation (shared, order-stable) ---- */
 
-      const index = args.indexOf('-t')
-      if (index > -1) {
-        const duration = args[index + 1]
-        const progress = Math.round((parseDuration(match[1]) / duration) * 100)
-        loading(progress)
+function validateSegment(job, label) {
+  if (!job || typeof job !== 'object') throw new Error(`Invalid ${label} request`)
+  if (typeof job.input !== 'string' || !job.input) throw new Error('Missing input file')
+  if (typeof job.output !== 'string' || !job.output) throw new Error('Missing output file')
+  if (job.input === job.output) throw new Error('Output would overwrite the source')
+  if (!Number.isFinite(job.start) || job.start < 0) throw new Error('Invalid start time')
+  if (!Number.isFinite(job.duration) || job.duration <= 0) throw new Error('Invalid duration')
+  if (!fs.existsSync(job.input)) throw new Error('Input file not found')
+}
+
+/* ---- job kinds ---- */
+
+async function cut(job, onProgress) {
+  validateSegment(job, 'cut')
+  if (active) throw new Error('A job is already running')
+
+  cancelled = false
+  const work = { kind: 'cut', duration: job.duration }
+  if (!job.forceReencode) {
+    try {
+      await runOnce(buildArgs(job, false), work, onProgress)
+      return 'copy'
+    } catch (error) {
+      if (error.fatal || cancelled) throw error
+      // Stream copy failed (codec/container mismatch etc.) — retry
+      // below as a compatibility re-encode.
+    }
+  }
+  await runOnce(buildArgs(job, true), work, onProgress)
+  return 'reencode'
+}
+
+async function convert(job, onProgress) {
+  validateSegment(job, 'convert')
+  if (active) throw new Error('A job is already running')
+
+  cancelled = false
+  await runOnce(convertArgs(job), { kind: 'convert', duration: job.duration }, onProgress)
+  return 'reencode'
+}
+
+async function extract(job, onProgress) {
+  validateSegment(job, 'extract')
+  if (active) throw new Error('A job is already running')
+
+  cancelled = false
+  await runOnce(extractArgs(job), { kind: 'extract', duration: job.duration }, onProgress)
+  return 'mp3'
+}
+
+async function capture(job) {
+  if (!job || typeof job !== 'object') throw new Error('Invalid capture request')
+  if (typeof job.input !== 'string' || !job.input) throw new Error('Missing input file')
+  if (typeof job.output !== 'string' || !job.output) throw new Error('Missing output file')
+  if (job.input === job.output) throw new Error('Output would overwrite the source')
+  if (!Number.isFinite(job.at) || job.at < 0) throw new Error('Invalid capture time')
+  if (!fs.existsSync(job.input)) throw new Error('Input file not found')
+  if (active) throw new Error('A job is already running')
+
+  cancelled = false
+  await runOnce(captureArgs(job), { kind: 'capture' })
+  return 'jpg'
+}
+
+async function merge(job, onProgress) {
+  if (!job || typeof job !== 'object') throw new Error('Invalid merge request')
+  if (!Array.isArray(job.inputs) || job.inputs.length < 2) {
+    throw new Error('Select at least two files to merge')
+  }
+  for (const input of job.inputs) {
+    if (typeof input !== 'string' || !input) throw new Error('Invalid merge request')
+    if (!fs.existsSync(input)) throw new Error(`Input file not found: ${path.basename(input)}`)
+  }
+  if (typeof job.output !== 'string' || !job.output) throw new Error('Missing output file')
+  if (job.inputs.includes(job.output)) throw new Error('Output would overwrite a source')
+  if (active) throw new Error('A job is already running')
+
+  cancelled = false
+  await runOnce(
+    mergeArgs(job),
+    { kind: 'merge', stdinData: concatList(job.inputs) },
+    onProgress,
+  )
+  return 'copy'
+}
+
+/* ---- metadata probe (display + stream-duration fallback) ----
+ *
+ * `ffmpeg -i <file>` with no output exits 1 with "At least one output
+ * file must be specified" — that IS the success path here; the stream
+ * lines we need are on stderr. Never rejects: metadata is optional, so
+ * a failed probe resolves to null. */
+
+const probeCache = new Map()
+const PROBE_CACHE_MAX = 16
+
+function parseStreams(stderr) {
+  const info = { duration: null, bitrate: null, video: null, audio: null }
+
+  const durationMatch = /Duration: (\d+):(\d+):([\d.]+)/.exec(stderr)
+  if (durationMatch) {
+    info.duration = Number(durationMatch[1]) * 3600 + Number(durationMatch[2]) * 60 + Number(durationMatch[3])
+    const bitrateMatch = /bitrate: (\d+) kb\/s/.exec(stderr)
+    if (bitrateMatch) info.bitrate = Number(bitrateMatch[1])
+  }
+
+  for (const line of stderr.split('\n')) {
+    if (line.includes('Video:') && !info.video) {
+      const codec = /Video: ([\w-]+)/.exec(line)
+      const size = /, (\d{2,5})x(\d{2,5})/.exec(line)
+      const fps = /([\d.]+) fps/.exec(line)
+      info.video = {
+        codec: codec ? codec[1] : null,
+        width: size ? Number(size[1]) : null,
+        height: size ? Number(size[2]) : null,
+        fps: fps ? Number(fps[1]) : null,
       }
     }
-  })
-  return process
-}
-
-// Native Wayland Screen Recording Spawner
-function wfRecorderCommand(args, options) {
-  loading(true)
-  const process = execFile('wf-recorder', args, options, (error, _stdout, stderr) => {
-    loading(false)
-    if (error && !error.killed) {
-      alert(`wf-recorder error: ${error.message}`)
+    if (line.includes('Audio:') && !info.audio) {
+      const codec = /Audio: ([\w-]+)/.exec(line)
+      const hz = /, (\d+) Hz/.exec(line)
+      info.audio = { codec: codec ? codec[1] : null, hz: hz ? Number(hz[1]) : null }
     }
+  }
+  return info
+}
+
+function probeRun(source) {
+  return new Promise(resolve => {
+    let proc
+    try {
+      proc = spawn(resolveBinary(), ['-hide_banner', '-i', source], {
+        stdio: ['ignore', 'ignore', 'pipe'],
+        windowsHide: true,
+      })
+    } catch (e) {
+      return resolve(null)
+    }
+
+    let stderr = ''
+    proc.stderr.on('data', chunk => {
+      stderr = (stderr + chunk.toString()).slice(-65536) // bounded
+    })
+
+    // Hard timeout: metadata is display-only and never worth a hang.
+    const timer = setTimeout(() => {
+      try { proc.kill('SIGKILL') } catch (e) { /* already gone */ }
+    }, 10000)
+
+    proc.on('error', () => {
+      clearTimeout(timer)
+      resolve(null)
+    })
+    proc.on('close', () => {
+      clearTimeout(timer)
+      const info = parseStreams(stderr)
+      resolve(info.duration != null || info.video || info.audio ? info : null)
+    })
   })
-  return process
 }
 
-function parseSegment(startTime, endTime) {
-  const start = parseDuration(startTime)
-  const end = parseDuration(endTime)
-  if (start >= end) {
-    alert('Start time cannot be later than end time')
-    return false
-  }
-  return {
-    start, duration: end - start
-  }
+/* Cached per source — the streaming server re-probes on every seek. */
+function probe(source) {
+  if (typeof source !== 'string' || !source) return Promise.resolve(null)
+  if (probeCache.has(source)) return probeCache.get(source)
+  const pending = probeRun(source)
+  probeCache.set(source, pending)
+  if (probeCache.size > PROBE_CACHE_MAX) probeCache.delete(probeCache.keys().next().value)
+  return pending
 }
 
-function formatOutputFile(videoPath, startTime, endTime, extname) {
-  const suffix = ('-' + startTime + '-' + endTime).replace(/:/g, '.')
-  return videoPath + suffix + (extname || path.extname(videoPath))
+/* Streaming transcode for the local media server — the playback
+ * fallback for codecs the <video> element cannot decode. spawn (not
+ * execFile) so stdout is never buffered into a maxBuffer limit:
+ * ultrafast re-encodes are routinely larger than the source file. */
+function fastCodec(videoPath, startTime) {
+  const proc = spawn(resolveBinary(), [
+    '-ss', String(startTime), '-i', videoPath,
+    '-preset:v', 'ultrafast', '-f', 'mp4', '-frag_duration', '1000000',
+    'pipe:1',
+  ], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+  // Drain stderr or the pipe fills up and ffmpeg stalls mid-stream.
+  proc.stderr.on('data', () => {})
+  return proc
+}
+
+/* ---- lifecycle ---- */
+
+function cancel() {
+  if (!active) return false
+  cancelled = true
+  active.proc.kill('SIGKILL')
+  return true
+}
+
+function killAll() {
+  cancelled = true
+  if (active) active.proc.kill('SIGKILL')
 }
 
 module.exports = {
-
-  cutVideo(videoPath, startTime, endTime) {
-    const outputFile = formatOutputFile(videoPath, startTime, endTime)
-    const segment = parseSegment(startTime, endTime)
-    if (!segment) return
-
-    return ffmpegCommand([
-      '-ss', segment.start, '-t', segment.duration, '-accurate_seek', '-i', videoPath,
-      '-vcodec', 'copy', '-acodec', 'copy', '-avoid_negative_ts', 1, '-y', outputFile
-    ])
-  },
-
-  convertVideo(videoPath, startTime, endTime) {
-    const outputFile = formatOutputFile(videoPath, startTime, endTime, '.mp4')
-    const segment = parseSegment(startTime, endTime)
-    if (!segment) return
-
-    return ffmpegCommand([
-      '-i', videoPath, '-ss', segment.start, '-t', segment.duration,
-      '-c:v', 'libx264', '-preset:v', 'veryfast', '-crf', 18, '-y', outputFile
-    ])
-  },
-
-  extractAudio(video, startTime, endTime) {
-    const segment = parseSegment(startTime, endTime)
-    if (!segment) return
-
-    const bitrate = video.getMetadata('Audio.BitRate')
-    const args = bitrate ? (bitrate > 320000 ? ['-b:a', '320k'] : ['-b:a', bitrate]) : ['-q:a', 0]
-    const outputFile = formatOutputFile(video.source, startTime, endTime, '.mp3')
-
-    return ffmpegCommand([
-      '-ss', segment.start, '-t', segment.duration, '-i', video.source,
-      ...args, '-vn', '-y', outputFile
-    ])
-  },
-
-  captureImage(video) {
-    const currentTime = formatDuration(video.getCurrentTime())
-    const outputFile = formatOutputFile(video.source, currentTime, 1, '.jpg')
-    return ffmpegCommand([
-      '-ss', currentTime, '-i', video.source, '-vframes', 1,
-      '-f', 'mjpeg', '-q:v', 2, '-y', outputFile
-    ])
-  },
-
-  mergeVideos(videoPaths) {
-    const outputFile = videoPaths[0] + '-merged' + path.extname(videoPaths[0])
-    const process = ffmpegCommand([
-      '-f', 'concat', '-safe', '0', '-protocol_whitelist', 'file,pipe',
-      '-i', '-', '-c', 'copy', '-y', outputFile,
-    ])
-
-    const videoList = videoPaths.map(path => "file '" + path + "'").join('\n')
-    stringToStream(videoList).pipe(process.stdin)
-    return process
-  },
-
-  // Completely stripped of win32 gdigrab runtime scaffolding
-  async recordVideo(outputPath) {
-    const timestamp = (new Date()).toISOString().replace(/[-:T]/g, '').slice(2, 14);
-    const outputFile = path.join(outputPath, `box-${timestamp}.mp4`);
-    
-    return wfRecorderCommand([
-      '--audio', 
-      '--no-damage', 
-      '--framerate', '60', 
-      '-c', 'libx264', 
-      '-p', 'qp=0', 
-      '-f', outputFile
-    ]);
-  },
-
-  fastCodec(videoPath, fileSize, startTime) {
-    return ffmpegCommand([
-      '-ss', startTime, '-i', videoPath, '-preset:v', 'ultrafast',
-      '-f', 'mp4', '-frag_duration', 1000000, 'pipe:1',
-    ], {
-      encoding: 'buffer', maxBuffer: Number(fileSize),
-    })
-  },
-
-  getMediaInfo(videoPath) {
-    return new Promise(resolve => {
-      execFile(mediainfo, [videoPath, '--Output=JSON'], (error, stdout) => {
-        if (error) {
-          alert('Get media information failed')
-          return
-        }
-        if (stdout.trim()) {
-          const mediaTrack = JSON.parse(stdout).media.track
-          const mediaInfo = {}
-          mediaTrack.forEach(track => mediaInfo[track['@type']] = track)
-          resolve(mediaInfo)
-        }
-      })
-    })
-  }
+  cut, convert, extract, capture, merge, probe, fastCodec,
+  cancel, killAll,
+  _internal: { buildArgs, resolveBinary, convertArgs, extractArgs, captureArgs, mergeArgs, concatList, parseStreams },
 }

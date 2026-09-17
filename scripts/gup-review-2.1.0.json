@@ -1,0 +1,237 @@
+{
+  "protocol": "GUP v5.2",
+  "candidate": "vidcut 2.1.0 (full edition) on working tree over commit 5323e9b",
+  "baseline": "vidcut 2.0.0-minimal, commit 5323e9b (proven: 24/24 offline, 40/40 smoke)",
+  "authorization": "User instruction: 'meticulously re-integrate all of the extra features we removed to arrive here systematically' on the proven base model.",
+  "gate2_scope_note": "All units run in one declared paradigm (main-process orchestrator, renderer = pure IPC UI). External executions carry hard timeouts or user-cancel + quit-kill coverage (interactive jobs are user-cancellable by design); resources are reclaimed on quit (jobs SIGKILLed, recorder SIGINT + grace, stream sockets destroyed).",
+  "units": {
+    "ffmpeg.cut": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Preserves the proven validation order and messages plus the copy-then-re-encode fallback; routes through the generalized runner; slot-busy message made kind-neutral ('A job is already running') because one slot now serves five job kinds. All 24 baseline cut behaviors re-verified by the offline suite (51/51) and smoke cut round-trips."
+    },
+    "ffmpeg.runOnce": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Same supervised-spawn contract: single-slot bookkeeping, memory-bounded stderr tail, time= progress parsing, cancelled-aware rejection, fatal spawn-error classification. Generalized to prebuilt args + job descriptor, adds stdin piping (concat list), and guards progress division by duration validity — the cut path produces identical values. Unit identity kept from baseline (renamed run -> runOnce to preserve it)."
+    },
+    "ffmpeg.validateSegment": {
+      "verdict": "PASS",
+      "rationale": "Baseline cut validation extracted verbatim (same order, same messages) parameterized by kind label; the offline suite asserts every rejection case still throws."
+    },
+    "ffmpeg.convert": {
+      "verdict": "PASS",
+      "rationale": "New job kind: deliberate compatibility re-encode using the proven reencode-fallback encoder settings; input-seek + optional stream maps make audio-only sources work. Offline tests assert mode, duration, progress."
+    },
+    "ffmpeg.convertArgs": {
+      "verdict": "PASS",
+      "rationale": "libx264 veryfast crf18 yuv420p + aac 192k — byte-consistent with the proven reencode fallback args; argument order verified by tests."
+    },
+    "ffmpeg.extract": {
+      "verdict": "PASS",
+      "rationale": "New job kind: clip audio to MP3. Supersedes the original mediainfo bitrate lookup with -q:a 0 (VBR best), removing the mediainfo binary dependency with an equivalent-quality choice."
+    },
+    "ffmpeg.extractArgs": {
+      "verdict": "PASS",
+      "rationale": "Input-seek, optional audio map, -vn, libmp3lame -q:a 0; tested for duration and progress offline."
+    },
+    "ffmpeg.capture": {
+      "verdict": "PASS",
+      "rationale": "New job kind: single-frame JPG at the playhead; validation mirrors cut's pattern; SOI marker asserted offline."
+    },
+    "ffmpeg.captureArgs": {
+      "verdict": "PASS",
+      "rationale": "Ports the original captureImage invocation (input-seek, -vframes 1, mjpeg, -q:v 2)."
+    },
+    "ffmpeg.merge": {
+      "verdict": "PASS",
+      "rationale": "New job kind: concat demuxer over stdin with the original single-quote escaping (apostrophe filenames tested green); >=2 files, existence and member-overwrite guards."
+    },
+    "ffmpeg.mergeArgs": {
+      "verdict": "PASS",
+      "rationale": "Concat list via stdin (no temp file, no shell); -nostdin deliberately omitted because stdin carries the list."
+    },
+    "ffmpeg.concatList": {
+      "verdict": "PASS",
+      "rationale": "Escaper for the concat demuxer syntax, ported from the fixed v1.0.3 implementation; hostile-name merge test passes."
+    },
+    "ffmpeg.fastCodec": {
+      "verdict": "PASS",
+      "rationale": "Verbatim port of the v1.0.3-proven streaming transcode args (ultrafast, fragmented mp4, pipe:1) with the stderr drain; exercised end-to-end by the offline server suite and the smoke stream-fallback checks."
+    },
+    "ffmpeg.parseStreams": {
+      "verdict": "PASS",
+      "rationale": "Display-only stderr parsing for duration/bitrate/video/audio; never rejects; unit-tested against a real probe output."
+    },
+    "ffmpeg.probeRun": {
+      "verdict": "PASS",
+      "rationale": "Header-only `ffmpeg -i` probe with bounded stderr and a 10 s hard timeout (GUP 4.2); resolves null on any failure — metadata is optional by contract."
+    },
+    "ffmpeg.probe": {
+      "verdict": "PASS",
+      "rationale": "Per-source promise cache with FIFO cap; never rejects; missing files resolve null."
+    },
+    "renderer.loadFile": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Unchanged core (busy gate, MEDIA_RE gate, chip, src assignment) wrapped with new-source invalidations: stream shutdown, boundsFresh flag, playback-rate reset to 1.0, title reset, sheet close, waveform reset. Base load behavior verified unchanged by smoke checks 5."
+    },
+    "renderer.render": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Identical painting math; time and duration flow through effTime/effDuration (native mode returns exactly the element values as before) and the segment inputs mirror the bounds only while unfocused."
+    },
+    "renderer.markStart": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Identical clamping semantics; bounds sourced from effTime/effDuration which reduce to the element values in native mode. Smoke check 8 green."
+    },
+    "renderer.markEnd": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Identical clamping semantics; see markStart."
+    },
+    "renderer.nudge": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Arrow-key nudges now route through seekTo; in native mode seekTo assigns currentTime exactly as before. Smoke checks nav/keyboard green."
+    },
+    "renderer.pointerTime": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Rect-relative ratio math unchanged; duration source switched to effDuration (identical in native mode)."
+    },
+    "renderer.endScrub": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Native scrubbing path unchanged; adds the stream-mode deferred commit (pending target applied once on release) to avoid spawning a transcode per pointer-move."
+    },
+    "renderer.syncEnabled": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Extends the enable/disable matrix to the new controls (speed, nav, inputs, capture/extract/convert) while every base control keeps its baseline condition (play/set-in/set-out/cut/file-chip/show-in-folder)."
+    },
+    "renderer.setBusy": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Optional {label, progress} opts; the base invocation setBusy(true) renders exactly as before (Cutting… + progress bar + cancel); merge/capture hide the indeterminate bar. Cut status flow re-verified by smoke."
+    },
+    "renderer.startCut": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Same save-dialog defaults and naming, same result handling and status wording; dispatch renamed to the unified 'job:start' channel with kind 'cut' — behavior equivalent, verified by smoke cut round-trips (normal, hostile, invalid)."
+    },
+    "renderer.setRate": {
+      "verdict": "PASS",
+      "rationale": "Speed control ported from the original (0.2-2.0, 0.1 steps) with rounding; rate resets to 1.0 per new source (documented improvement — the original kept the old rate across loads)."
+    },
+    "renderer.applyInput": {
+      "verdict": "PASS",
+      "rationale": "Validated, clamped clip-bound updates from the timecode inputs; Enter seeks, blur rewrites the canonical form; invalid input flags the field without touching state."
+    },
+    "renderer.parseTime": {
+      "verdict": "PASS",
+      "rationale": "Colon-count-based unit assignment (SS | MM:SS | H:MM:SS) so '2:05' is two minutes; fixed the first-pass hour-swallow regression found by the smoke run."
+    },
+    "renderer.formatTime": {
+      "verdict": "PASS",
+      "rationale": "Canonical HH:MM:SS.mmm with correct zero-padding (pad-width default fixed after the smoke run caught '0:2:5.500')."
+    },
+    "renderer.seekTo": {
+      "verdict": "PASS",
+      "rationale": "Dual-mode seek: native assigns currentTime (base behavior); stream mode serves buffered nudges natively and re-opens the stream at the target otherwise — the loop-proof fallback."
+    },
+    "renderer.effTime": {
+      "verdict": "PASS",
+      "rationale": "Stream-position arithmetic; reduces to element currentTime in native mode."
+    },
+    "renderer.effDuration": {
+      "verdict": "PASS",
+      "rationale": "Stream totals prefer the probed duration (fragmented element.duration only reflects arrived data — regression found and fixed during smoke); reduces to element duration in native mode."
+    },
+    "renderer.openStream": {
+      "verdict": "PASS",
+      "rationale": "One-attempt transcode fallback with clean failure surface; sets streamMode/start/probed duration and swaps the element src."
+    },
+    "renderer.probeTitle": {
+      "verdict": "PASS",
+      "rationale": "Display-only title enrichment via the probe IPC; stale-source guard; failures silent by contract."
+    },
+    "renderer.updateAudioOnly": {
+      "verdict": "PASS",
+      "rationale": "Audio-only detection (videoHeight === 0) toggling the waveform; attaches the MediaElementSource only for native file:// sources — cross-origin streams would be muted by Chromium's taint rules (a mute-bug present in the original, avoided here)."
+    },
+    "renderer.openSheet": {
+      "verdict": "PASS",
+      "rationale": "Exclusive-open sheet manager; sheets carry the hidden attribute in markup — the default-expanded panel bug is structurally impossible. Verified by boot checks and the five-size sweep."
+    },
+    "renderer.closeSheet": {
+      "verdict": "PASS",
+      "rationale": "Restores the hidden attribute; Escape and mask-click close paths verified."
+    },
+    "renderer.closeSheets": {
+      "verdict": "PASS",
+      "rationale": "Closes all (new source load, Escape)."
+    },
+    "renderer.startTool": {
+      "verdict": "PASS",
+      "rationale": "Capture/extract/convert dispatch through the shared busy lock, progress channel and save-dialog pattern; capture uses the playhead, the others the marked clip."
+    },
+    "main.createWindow": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Identical window construction except minHeight 360 -> 480: the full edition stacks four wrapping control rows and the invariant (toolbar can never be resized out of existence) requires the taller floor. Verified by the five-size sweep including 520x480."
+    },
+    "main.createTray": {
+      "verdict": "PASS",
+      "rationale": "Guarded tray lifecycle (idempotent removeTray, isDestroyed checks, try/catch for tray-less desktops); click shows or recreates the window; deferred confirmation after recorder start prevents a stale 'started' after instant spawn failure (race found and fixed during smoke)."
+    },
+    "main.removeTray": {
+      "verdict": "PASS",
+      "rationale": "Idempotent destroy with timer cleanup — ports the fixed v1.0.3 guards (the original leaked a blink timer and could null-deref)."
+    },
+    "main.recordDir": {
+      "verdict": "PASS",
+      "rationale": "Desktop path with home fallback for recordings."
+    },
+    "main.send": {
+      "verdict": "PASS",
+      "rationale": "Destroyed-window-guarded event forwarding helper."
+    },
+    "app.index.html": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Keeps every base element and adds the feature toolbar rows, segment inputs, speed group, waveform canvas and the two hidden sheets; CSP gains the loopback stream origin. Both sheets ship with the hidden attribute — the reported default-expanded panel cannot recur."
+    },
+    "app.main.css": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "All base rules retained verbatim (layout invariants untouched); adds sheet, input, speed-chip, merge-list, record and waveform styles plus the extended [hidden] guarantee."
+    },
+    "app.merge.js": {
+      "verdict": "PASS",
+      "rationale": "New module: merge sheet controller — hidden-by-default sheet, textContent-only file list, >=2 guard, dispatch through the unified job slot; single-pick loads as source (original behavior)."
+    },
+    "app.record.js": {
+      "verdict": "PASS",
+      "rationale": "New module: record sheet controller — event-driven state machine over recorder:started/stopped/failed with wall-clock timer; UI can never disagree with the actual process."
+    },
+    "app.recorder.js": {
+      "verdict": "PASS",
+      "rationale": "New module (main process): wf-recorder ownership — SIGINT finalize (the only signal it finalizes with), 3 s SIGKILL escalation, status/startedAt reporting, destroy() for quit; window reload/close can no longer orphan a recording."
+    },
+    "app.server.js": {
+      "verdict": "PASS",
+      "rationale": "New module (main process): loopback-only ephemeral-port streaming server; absolute-path existence gate; per-request ffmpeg child killed on request close; socket-set destruction on shutdown. Verified by the 10-check offline suite."
+    },
+    "app.wave.js": {
+      "verdict": "PASS",
+      "rationale": "New module: DPR-aware mirrored-spectrum visualizer, lazily attached and only for native sources (taint rules would mute cross-origin streams); resize listener removed on destroy."
+    },
+    "package.json": {
+      "verdict": "PASS",
+      "rationale": "2.1.0; description reflects the restored toolkit; adds test:server and visual scripts; still zero runtime dependencies (string-to-stream and @electron/remote superseded by the main-side architecture)."
+    },
+    "scripts.test-cut": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "All 24 baseline checks retained verbatim; adds 27 checks for convert/extract/capture/merge (incl. apostrophe concat) / probe / new-op validation."
+    },
+    "scripts.test-server": {
+      "verdict": "PASS",
+      "rationale": "New: offline streaming-server suite (10 checks: url, probed duration, HTTP fMP4 bytes, port reuse, hostile names, missing source, shutdown)."
+    },
+    "scripts.electron-smoke": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "All 40 baseline checks retained (channels renamed to the unified job:* with identical assertions); adds 45: sheets hidden at boot (the reported bug's regression test), title probe, speed, inputs, navigation, capture/merge round-trips, stream fallback + re-open seek, waveform toggle, recorder ENOENT, sheets-stay-hidden across the size sweep."
+    },
+    "scripts.visual-check": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "rationale": "Same font verification; screenshots renamed for 2.1.0 and extended with the explicitly-opened merge/record sheet states."
+    }
+  }
+}

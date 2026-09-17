@@ -1,61 +1,167 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&family=Orbitron:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="./main.css">
-  </head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>vidcut</title>
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; media-src 'self' file: blob: http://127.0.0.1:*; style-src 'self' 'unsafe-inline'">
+  <link rel="stylesheet" href="main.css">
+</head>
 
-  <body>
-    <main>
-      <video></video><canvas></canvas>
-      <div id="open-file">
-        <svg class="glyph-icon" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-          <path class="glyph-ring-1" d="M 64,12 A 52,52 0 1 1 63.9,12 Z" />
-          <path class="glyph-ring-2" d="M 64,20 A 44,44 0 1 1 63.9,20 Z" />
-          <path class="glyph-hex" d="M64 30 L91.3 47 L91.3 81 L64 98 L36.7 81 L36.7 47 Z" />
-          <text x="64" y="67" text-anchor="middle" dominant-baseline="middle" font-size="56" font-weight="700">Ψ</text>
+<body>
+  <header id="topbar">
+    <span id="brand">vidcut</span>
+    <span class="spacer"></span>
+    <span id="file-chip" hidden></span>
+    <span class="spacer"></span>
+    <button id="open-btn" class="hud-button" type="button">Open video…</button>
+  </header>
+
+  <main id="stage">
+    <video id="player" preload="metadata"></video>
+    <canvas id="wave" hidden></canvas>
+    <div id="dropzone">
+      <svg class="glyph-icon" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path class="glyph-ring-1" d="M 64,12 A 52,52 0 1 1 63.9,12 Z" />
+        <path class="glyph-ring-2" d="M 64,20 A 44,44 0 1 1 63.9,20 Z" />
+        <path class="glyph-hex" d="M64 30 L91.3 47 L91.3 81 L64 98 L36.7 81 L36.7 47 Z" />
+        <text x="64" y="67" text-anchor="middle" dominant-baseline="middle" font-size="56" font-weight="700">Ψ</text>
+      </svg>
+      <span id="dz-label">Drop a video anywhere</span>
+      <span class="dz-hint">or click “Open video…” — lossless cutting, no re-encode</span>
+    </div>
+  </main>
+
+  <footer id="controls">
+    <div class="row row-transport">
+      <button id="play-btn" class="hud-button icon" type="button" title="Play / pause (Space)"
+              aria-label="Play or pause" disabled>
+        <svg class="icon-svg" id="icon-play" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M5.5 3.5 L12.5 8 L5.5 12.5 Z"/>
         </svg>
-        <span>Initialize Video Source</span>
+        <svg class="icon-svg" id="icon-pause" viewBox="0 0 16 16" aria-hidden="true" hidden>
+          <path d="M6 3.5 V12.5 M10 3.5 V12.5"/>
+        </svg>
+      </button>
+      <div id="speed-group" role="group" aria-label="Playback speed">
+        <button id="speed-down-btn" class="hud-button icon" type="button" title="Slower playback (0.2× floor)"
+                aria-label="Slower playback" disabled>
+          <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M7.5 4 L3 8 L7.5 12 Z M13 4 L8.5 8 L13 12 Z"/>
+          </svg>
+        </button>
+        <span id="speed-chip" title="Playback rate — click to reset to 1.0×">1.0×</span>
+        <button id="speed-up-btn" class="hud-button icon" type="button" title="Faster playback (2.0× ceiling)"
+                aria-label="Faster playback" disabled>
+          <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8.5 4 L13 8 L8.5 12 Z M3 4 L7.5 8 L3 12 Z"/>
+          </svg>
+        </button>
       </div>
-    </main>
-
-    <div class="toolbar">
-      <div class="timeline">
-        <span id="currentTime">00:00:00.000</span> / <span id="duration">00:00:00.000</span>
-        <div id="segment"></div>
-        <div id="progress"></div>
+      <span id="time-cur" class="time">0:00.0</span>
+      <div id="timeline" title="Click or drag to seek">
+        <div id="tl-track"></div>
+        <div id="tl-region"></div>
+        <div id="tl-progress"></div>
+        <div id="flag-in" class="flag flag-in" hidden></div>
+        <div id="flag-out" class="flag flag-out" hidden></div>
       </div>
-
-      <div class="controls">
-        <button class="hud-button video-start" title="To the start of video" disabled>|◀</button>
-        <button class="hud-button segment-start" title="To the start of segment" disabled>[</button>
-        <input id="segment-start-time" maxlength="12" value="00:00:00.000" disabled/>
-        <button class="hud-button cut-start" title="Cut the start of segment" disabled>✂ Start</button>
-        
-        <button class="hud-button slow-down" title="Decrease playback rate" disabled>⏪</button>
-        <button class="hud-button play" disabled>▶</button>
-        <button class="hud-button speed-up" title="Increase playback rate" disabled>⏩</button>
-        
-        <button class="hud-button cut-end" title="Cut the end of segment" disabled>✂ End</button>
-        <input id="segment-end-time" maxlength="12" value="00:00:00.000" disabled/>
-        <button class="hud-button segment-end" title="To the end of segment" disabled>]</button>
-        <button class="hud-button video-end" title="To the end of video" disabled>▶|</button>
-      </div>
-
-      <div class="features">
-        <button class="hud-button capture" title="Capture Frame as JPG" disabled>Capture</button>
-        <button class="hud-button extract" title="Extract Audio as MP3" disabled>Extract</button>
-        <button class="hud-button convert" title="Convert Segment as MP4" disabled>Convert</button>
-        <button class="hud-button cut" title="Lossless Cut" disabled>FLAWLESS CUT</button>
-        <button class="hud-button open-files" title="Open Videos to Merge">Merge Files</button>
-        <button class="hud-button open-record" title="Record Screen">Record</button>
-        <button class="hud-button help" title="Online Help">Help</button>
-      </div>
+      <span id="time-total" class="time">0:00.0</span>
     </div>
 
-    <script src="./renderer.js"></script>
-  </body>
+    <div class="row row-selection">
+      <button id="nav-start-btn" class="hud-button icon" type="button" title="Jump to video start (Home)"
+              aria-label="Jump to video start" disabled>
+        <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3.5 V12.5 M13 4 L6.5 8 L13 12 Z"/></svg>
+      </button>
+      <button id="nav-in-btn" class="hud-button icon" type="button" title="Jump to clip start ([)"
+              aria-label="Jump to clip start" disabled>
+        <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 3.5 L5.5 8 L10.5 12.5"/></svg>
+      </button>
+      <input id="in-input" class="time-input" type="text" maxlength="12" value="00:00:00.000"
+             title="Clip start (HH:MM:SS.mmm) — grab with the Start button" disabled
+             autocomplete="off" spellcheck="false">
+      <button id="set-in-btn" class="hud-button" type="button" title="Mark clip start at the playhead (I)" disabled>
+        <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="4.5" cy="4.5" r="1.9"/>
+          <circle cx="4.5" cy="11.5" r="1.9"/>
+          <path d="M6.1 5.7 L13 12.2 M6.1 10.3 L13 3.8"/>
+        </svg>
+        Start (I)
+      </button>
+      <button id="set-out-btn" class="hud-button" type="button" title="Mark clip end at the playhead (O)" disabled>
+        <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="4.5" cy="4.5" r="1.9"/>
+          <circle cx="4.5" cy="11.5" r="1.9"/>
+          <path d="M6.1 5.7 L13 12.2 M6.1 10.3 L13 3.8"/>
+        </svg>
+        End (O)
+      </button>
+      <input id="out-input" class="time-input" type="text" maxlength="12" value="00:00:00.000"
+             title="Clip end (HH:MM:SS.mmm) — grab with the End button" disabled
+             autocomplete="off" spellcheck="false">
+      <button id="nav-out-btn" class="hud-button icon" type="button" title="Jump to clip end (])"
+              aria-label="Jump to clip end" disabled>
+        <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.5 L10.5 8 L5.5 12.5"/></svg>
+      </button>
+      <button id="nav-end-btn" class="hud-button icon" type="button" title="Jump to video end (End)"
+              aria-label="Jump to video end" disabled>
+        <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 3.5 V12.5 M3 4 L9.5 8 L3 12 Z"/></svg>
+      </button>
+      <span class="spacer"></span>
+      <span id="sel-info">no source loaded</span>
+      <span class="spacer"></span>
+      <button id="cut-btn" class="hud-button primary" type="button" disabled>Cut</button>
+      <button id="cancel-btn" class="hud-button" type="button" hidden>Cancel</button>
+    </div>
+
+    <div class="row row-features">
+      <button id="capture-btn" class="hud-button" type="button" title="Save the current frame as a JPG" disabled>Capture</button>
+      <button id="extract-btn" class="hud-button" type="button" title="Extract the clip's audio as MP3" disabled>Extract Audio</button>
+      <button id="convert-btn" class="hud-button" type="button" title="Re-encode the clip as a compatible MP4" disabled>Convert</button>
+      <span class="spacer"></span>
+      <button id="merge-btn" class="hud-button" type="button" title="Merge several files into one">Merge Files…</button>
+      <button id="record-btn" class="hud-button" type="button" title="Record the screen (Wayland / wf-recorder)">Record…</button>
+      <button id="help-btn" class="hud-button" type="button" title="Open the vidcut repository">Help</button>
+    </div>
+
+    <div class="row row-status">
+      <div id="progress" hidden><div id="progress-fill"></div></div>
+      <span id="status">Drop a video anywhere to begin.</span>
+      <button id="show-btn" class="hud-button link" type="button" hidden>Show in folder</button>
+    </div>
+  </footer>
+
+  <!-- Modal sheets. Structure is the bugfix: both sheets carry the
+       hidden attribute in markup, so a panel can never render — or
+       push the flexbox around — until the user explicitly opens it. -->
+  <section id="merge-sheet" class="sheet" hidden>
+    <div class="sheet-panel">
+      <div class="sheet-title">Merge files</div>
+      <ol id="merge-list"></ol>
+      <div class="sheet-actions">
+        <button id="merge-add-btn" class="hud-button" type="button">Add files…</button>
+        <button id="merge-clear-btn" class="hud-button" type="button">Clear</button>
+        <span class="spacer"></span>
+        <button id="merge-start-btn" class="hud-button primary" type="button">Merge</button>
+        <button id="merge-close-btn" class="hud-button" type="button">Close</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="record-sheet" class="sheet" hidden>
+    <div class="sheet-panel">
+      <div class="sheet-title">Screen recording</div>
+      <div id="record-elapsed">00:00:00.00</div>
+      <div class="sheet-hint">Wayland capture via wf-recorder · saved to the Desktop as box-YYMMDD-HHMMSS.mp4 · the window hides to the tray while recording</div>
+      <div class="sheet-actions">
+        <button id="record-start-btn" class="hud-button primary" type="button">Start</button>
+        <button id="record-stop-btn" class="hud-button" type="button" hidden>Stop &amp; Save</button>
+        <button id="record-close-btn" class="hud-button" type="button">Close</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="renderer.js"></script>
+</body>
 </html>
