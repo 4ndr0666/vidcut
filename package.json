@@ -16,6 +16,8 @@
     "test:server": "node scripts/test-server.js",
     "smoke": "electron scripts/electron-smoke.js",
     "visual": "electron scripts/visual-check.js",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
     "build:linux": "electron-builder -l",
     "build:win": "electron-builder -w"
   },
@@ -42,7 +44,26 @@
       "category": "Video"
     }
   },
+  "config": {
+    "forge": {
+      "packagerConfig": {
+        "asar": true
+      },
+      "makers": [
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "linux"
+          ]
+        }
+      ]
+    }
+  },
   "devDependencies": {
+    "@electron-forge/cli": "^7.6.1",
+    "@electron-forge/maker-zip": "^7.6.1",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.6.1",
+    "@electron-forge/plugin-fuses": "^7.6.1",
     "electron": "^42.3.0",
     "electron-builder": "^26.8.1"
   },
