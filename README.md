@@ -119,73 +119,29 @@ hl.bind(mainMod .. " + F6", hl.dsp.exec_cmd(lbin .. "/vidcut"), { description = 
 
 | Action | How |
 | --- | --- |
-| Open a video | Drag & drop anywhere in the window, **Open video…**, or `Ctrl+O`<br> |
-| Play / pause | Click the video, or `Space` — hardcoded, it always toggles playback and never re-triggers a focused button (not even Open right after a load)
-
- |
-| Seek / frame-step | Click or drag the timeline; `←`/`→` — every discrete press steps **exactly one frame** (frame-by-frame); hold for tactile accelerated scrubbing (0.1 s → 0.5 s → 1 s → 2 s → 5 s steps; `Shift` pins 0.05 s while held); the scrub HUD lingers 3.5 s after release so you can keep tapping
-
- |
-| Instant jumps | `Home`/`End` = video start/end; `1`–`9` jump to chapter starts when the container has them (`1` is always the video start); `0` is always the video end — chapters or not. Chapter starts appear as thin cyan ticks on the timeline
-
- |
-| Jump to clip bounds | `Shift+Home` / `Shift+End`, or the chevron buttons flanking the timecode fields
-
- |
-| Zoom & pan | Mouse wheel over the video, or `=` / `−` (1×–6×, ×1.25 per notch). Once zoomed, **Ctrl+drag** slides the picture around — clamped so it can never leave the frame, and a pan never doubles as a play toggle. `Ctrl+0` resets zoom and pan; a new file resets both
-
- |
-| Mark clip start | `I`, or **Start** — or type a timecode into the start field
-
- |
-| Mark clip end | `O`, or **End** — or type a timecode into the end field
-
- |
-| Adjust clip bounds | Drag the green/orange flags on the timeline (hand cursor)
-
- |
-| Undo / redo | `Ctrl+Z` walks clip-mark changes back — keyed marks, flag drags, typed timecodes (a typing burst collapses into one step); `Ctrl+Shift+Z` / `Ctrl+Y` re-applies. Seeks, zoom, rate and mute are navigation, not history; a new file starts a fresh history
-
- |
-| Speed | `[` / `]` (0.2×–2.0×); `Backspace` or a click on the rate chip resets to 1.0×
-
- |
-| Mute | `U`, or the **Mute** toggle — while it is on, what you hear is what you get: the preview plays silent and **Cut / Convert / Merge write silent video**. Extract Audio is exempt (it IS the audio), and audio-only sources keep their audio regardless
-
- |
-| Cut (lossless) | `Enter`, or **Cut** → choose where to save; `Escape` cancels a running job
-
- |
-| Capture a frame | `S`, or **Capture** → saved straight into `~/Pictures/screenshots/` as a JPG — no dialog, idempotent naming
-
- |
-| Extract audio | `A`, or **Extract Audio** → saves the clip's audio as MP3 (VBR best)
-
- |
-| Convert clip | `C`, or **Convert** → re-encodes the clip as a compatibility MP4
-
- |
-| Merge files | `M`, or **Merge…** → pick 2+ files → **Merge**. Inputs that already agree on codec, resolution, fps, pixel format, SAR and audio shape concat **losslessly in one pass**; anything mismatched is normalized first (shared max canvas with letterboxing, one fps, `yuv420p`, aac/48k/stereo — silent sources get audio injected so the join is well-formed, and a conformant video stream is still stream-copied with only its audio re-encoded). One bad file is skipped and reported, never fatal to the batch; every artifact is moov-validated and published atomically, so a failed or cancelled merge never leaves a half-written file on your chosen name
-
- |
-| Merge work dir | The merge sheet's **Change…** row chooses where preprocessing (normalizing mismatched inputs) writes its temporary parts — default is a hidden folder beside the merged output, and the row shows the dir's live free space. When the inputs are big and that disk is not, point it at a roomier one; a disk preflight refuses a work dir that plainly cannot hold roughly the total size of the inputs *before* an hour of encoding is spent on a doomed run. The final output is always published beside its chosen location regardless
-
- |
-| Record screen | `R`, or **Record…** → Start (Wayland, via wf-recorder); the window hides to a blinking tray, click the tray to get it back
-
- |
-| Show last output | `F`, or **Show in folder** — reveals the most recent output in your file manager
-
- |
-| All shortcuts | `?`, or **Help** → the in-app keyboard sheet (the repo link lives inside it)
-
- |
-| Fullscreen | Double-click the video
-
- |
-| Close a panel | `Escape` — in a sheet it closes the sheet; while a job runs it cancels the job. Inside a sheet, `Enter` runs the sheet's primary action and the global tools stay suspended
-
- |
+| Open a video | Drag & drop anywhere in the window, **Open video…**, or `Ctrl+O` |
+| Play / pause | Click the video, or `Space` — hardcoded, it always toggles playback and never re-triggers a focused button (not even Open right after a load) |
+| Seek / frame-step | Click or drag the timeline; `←`/`→` — every discrete press steps **exactly one frame** (frame-by-frame); hold for tactile accelerated scrubbing (0.1 s → 0.5 s → 1 s → 2 s → 5 s steps; `Shift` pins 0.05 s while held); the scrub HUD lingers 3.5 s after release so you can keep tapping |
+| Instant jumps | `Home`/`End` = video start/end; `1`–`9` jump to chapter starts when the container has them (`1` is always the video start); `0` is always the video end — chapters or not. Chapter starts appear as thin cyan ticks on the timeline |
+| Jump to clip bounds | `Shift+Home` / `Shift+End`, or the chevron buttons flanking the timecode fields |
+| Zoom & pan | Mouse wheel over the video, or `=` / `−` (1×–6×, ×1.25 per notch). Once zoomed, **Ctrl+drag** slides the picture around — clamped so it can never leave the frame, and a pan never doubles as a play toggle. `Ctrl+0` resets zoom and pan; a new file resets both |
+| Mark clip start | `I`, or **Start** — or type a timecode into the start field |
+| Mark clip end | `O`, or **End** — or type a timecode into the end field |
+| Adjust clip bounds | Drag the green/orange flags on the timeline (hand cursor) |
+| Undo / redo | `Ctrl+Z` walks clip-mark changes back — keyed marks, flag drags, typed timecodes (a typing burst collapses into one step); `Ctrl+Shift+Z` / `Ctrl+Y` re-applies. Seeks, zoom, rate and mute are navigation, not history; a new file starts a fresh history |
+| Speed | `[` / `]` (0.2×–2.0×); `Backspace` or a click on the rate chip resets to 1.0× |
+| Mute | `U`, or the **Mute** toggle — while it is on, what you hear is what you get: the preview plays silent and **Cut / Convert / Merge write silent video**. Extract Audio is exempt (it IS the audio), and audio-only sources keep their audio regardless |
+| Cut (lossless) | `Enter`, or **Cut** → choose where to save; `Escape` cancels a running job |
+| Capture a frame | `S`, or **Capture** → saved straight into `~/Pictures/screenshots/` as a JPG — no dialog, idempotent naming |
+| Extract audio | `A`, or **Extract Audio** → saves the clip's audio as MP3 (VBR best) |
+| Convert clip | `C`, or **Convert** → re-encodes the clip as a compatibility MP4 |
+| Merge files | `M`, or **Merge…** → pick 2+ files → **Merge**. Inputs that already agree on codec, resolution, fps, pixel format, SAR and audio shape concat **losslessly in one pass**; anything mismatched is normalized first (shared max canvas with letterboxing, one fps, `yuv420p`, aac/48k/stereo — silent sources get audio injected so the join is well-formed, and a conformant video stream is still stream-copied with only its audio re-encoded). One bad file is skipped and reported, never fatal to the batch; every artifact is moov-validated and published atomically, so a failed or cancelled merge never leaves a half-written file on your chosen name |
+| Merge work dir | The merge sheet's **Change…** row chooses where preprocessing (normalizing mismatched inputs) writes its temporary parts — default is a hidden folder beside the merged output, and the row shows the dir's live free space. When the inputs are big and that disk is not, point it at a roomier one; a disk preflight refuses a work dir that plainly cannot hold roughly the total size of the inputs *before* an hour of encoding is spent on a doomed run. The final output is always published beside its chosen location regardless |
+| Record screen | `R`, or **Record…** → Start (Wayland, via wf-recorder); the window hides to a blinking tray, click the tray to get it back |
+| Show last output | `F`, or **Show in folder** — reveals the most recent output in your file manager |
+| All shortcuts | `?`, or **Help** → the in-app keyboard sheet (the repo link lives inside it) |
+| Fullscreen | Double-click the video |
+| Close a panel | `Escape` — in a sheet it closes the sheet; while a job runs it cancels the job. Inside a sheet, `Enter` runs the sheet's primary action and the global tools stay suspended |
 
 Every control in the window answers to a key — and says so: buttons carry their keybind in their label or tooltip, and the `?` sheet lists the whole map.
 
@@ -207,30 +163,14 @@ Every writer is **atomic and validated**: work lands in a hidden `name.vidcut.ex
 
 | File | Role |
 | --- | --- |
-| `app/main.js` | Window lifecycle, native dialogs, tray, IPC surface, quit orchestration
-
- |
-| `app/ffmpeg.js` | The one job slot: cut / convert / extract / capture / merge (probe → lossless fast path with validation, or the normalize path with per-file intermediates in the configurable work dir behind a disk preflight) + metadata probe, progress, cancel — every writer atomic (`.vidcut` working file + validated rename)
-
- |
-| `app/recorder.js` | wf-recorder supervision (spawned and owned by main — SIGINT finalize, SIGKILL escalation)
-
- |
-| `app/server.js` | Local streaming-transcode server for sources the player cannot decode
-
- |
-| `app/renderer.js` | Core UI: drag & drop, player, timeline, clip marking, tools, speed, mute toggle, chapter ticks, sheets manager
-
- |
-| `app/merge.js`, `app/record.js` | The merge and record sheets (hidden in markup; only explicit user action reveals them)
-
- |
-| `app/wave.js` | Audio-only waveform visualizer (lazily attached, DPR-aware)
-
- |
-| `app/index.html` + `app/main.css` | The 3LECTRIC_GLASS layout
-
- |
+| `app/main.js` | Window lifecycle, native dialogs, tray, IPC surface, quit orchestration |
+| `app/ffmpeg.js` | The one job slot: cut / convert / extract / capture / merge (probe → lossless fast path with validation, or the normalize path with per-file intermediates in the configurable work dir behind a disk preflight) + metadata probe, progress, cancel — every writer atomic (`.vidcut` working file + validated rename) |
+| `app/recorder.js` | wf-recorder supervision (spawned and owned by main — SIGINT finalize, SIGKILL escalation) |
+| `app/server.js` | Local streaming-transcode server for sources the player cannot decode |
+| `app/renderer.js` | Core UI: drag & drop, player, timeline, clip marking, tools, speed, mute toggle, chapter ticks, sheets manager |
+| `app/merge.js`, `app/record.js` | The merge and record sheets (hidden in markup; only explicit user action reveals them) |
+| `app/wave.js` | Audio-only waveform visualizer (lazily attached, DPR-aware) |
+| `app/index.html` + `app/main.css` | The 3LECTRIC_GLASS layout |
 
 ### Security Posture & IPC Isolation
 
