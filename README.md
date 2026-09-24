@@ -52,7 +52,7 @@ yay -S libxcrypt-compat nvm
 
 ```bash
 # Clone the repository
-git clone [https://github.com/4ndr0666/vidcut.git](https://github.com/4ndr0666/vidcut.git)
+git clone https://github.com/4ndr0666/vidcut.git
 cd vidcut
 
 # Ensure correct Node version is active
@@ -87,7 +87,7 @@ npm run package
 Symlink the binary into your local user path:
 
 ```bash
-ln -sf /home/git/clone/4ndr0666/vidcut/out/vidcut-linux-x64/vidcut ~/.local/bin/vidcut
+ln -sf /home/git/clone/$USER/vidcut/out/vidcut-linux-x64/vidcut ~/.local/bin/vidcut
 
 ```
 
