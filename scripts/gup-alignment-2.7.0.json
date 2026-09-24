@@ -1,0 +1,194 @@
+{
+  "protocol": "GUP v5.2",
+  "revision": "vidcut 2.7.0",
+  "scope": "Bidirectional dependency/capability closure for the v2.7.0 surface: the work-dir IPC contract, the engine work-dir injection, the atomic-writer capability, and the statfs dependency.",
+  "declarations": [
+    {
+      "id": "cap-workdir-get",
+      "kind": "capability",
+      "subject": "ipc:workdir:get",
+      "source_unit": "main.js#workdirStatus (ipcMain.handle workdir:get)"
+    },
+    {
+      "id": "cap-workdir-set",
+      "kind": "capability",
+      "subject": "ipc:workdir:set",
+      "source_unit": "main.js#setWorkDir (ipcMain.handle workdir:set — the validation+persist primitive; workdir:pick delegates to it)"
+    },
+    {
+      "id": "cap-workdir-pick",
+      "kind": "capability",
+      "subject": "ipc:workdir:pick",
+      "source_unit": "main.js#ipcMain.handle workdir:pick (native directory picker wrapping setWorkDir)"
+    },
+    {
+      "id": "cap-workdir-reset",
+      "kind": "capability",
+      "subject": "ipc:workdir:reset",
+      "source_unit": "main.js#ipcMain.handle workdir:reset"
+    },
+    {
+      "id": "dep-engine-workdir",
+      "kind": "dependency",
+      "subject": "engine:merge-workdir",
+      "source_unit": "main.js#job:start merge branch (injects settings.workDir into job.workDir)"
+    },
+    {
+      "id": "dep-statfs",
+      "kind": "dependency",
+      "subject": "node:fs.statfsSync",
+      "source_unit": "ffmpeg.js#ensureWorkspace (feature-detected)"
+    },
+    {
+      "id": "cap-atomic-writers",
+      "kind": "capability",
+      "subject": "engine:atomic-validated-output",
+      "source_unit": "ffmpeg.js#cut/convert/extract/capture/merge (partPath working file + validSegmentOutput/checkJpeg + publishPart rename)"
+    }
+  ],
+  "observations": [
+    {
+      "kind": "capability",
+      "subject": "ipc:workdir:get",
+      "source_unit": "merge.js#renderWorkDir (ipcRenderer.invoke on sheet open and after pick/reset)"
+    },
+    {
+      "kind": "capability",
+      "subject": "ipc:workdir:set",
+      "source_unit": "scripts/electron-smoke.js block 19c (ipcRenderer.invoke workdir:set with a scratch dir — the declared programmatic/test seam)"
+    },
+    {
+      "kind": "capability",
+      "subject": "ipc:workdir:pick",
+      "source_unit": "merge.js#pickWorkDir (ipcRenderer.invoke; non-canceled result re-renders the row)"
+    },
+    {
+      "kind": "capability",
+      "subject": "ipc:workdir:reset",
+      "source_unit": "merge.js#resetWorkDir (ipcRenderer.invoke)"
+    },
+    {
+      "kind": "dependency",
+      "subject": "engine:merge-workdir",
+      "source_unit": "ffmpeg.js#merge (reads job.workDir; intermediates in the work dir, final part beside the output)"
+    },
+    {
+      "kind": "dependency",
+      "subject": "node:fs.statfsSync",
+      "source_unit": "ffmpeg.js#ensureWorkspace and main.js#freeSpace (both typeof-guarded, null-on-unavailable)"
+    },
+    {
+      "kind": "capability",
+      "subject": "engine:atomic-validated-output",
+      "source_unit": "renderer.js#startTool and renderer.js#cut dispatch (state.lastOutput set on job ok — the renderer depends on ok meaning the file landed on the chosen name)"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "bind-workdir-get",
+      "declaration_id": "cap-workdir-get",
+      "consumer_unit": "merge.js#renderWorkDir",
+      "provider": "main.js#workdirStatus",
+      "status": "VERIFIED",
+      "consumer_evidence": [
+        "app/merge.js: renderWorkDir invokes ipcRenderer.invoke('workdir:get') and renders { dir, free }",
+        "scripts/electron-smoke.js 19c: 'workdir: default is beside the output' and 'get mirrors the persisted dir' pass against the real handler"
+      ],
+      "provider_evidence": [
+        "app/main.js: ipcMain.handle('workdir:get', () => workdirStatus()) returning { ok, dir, free }",
+        "offline/smoke suites: freeSpace is feature-detected statfs — the smoke check 'free space reported for the chosen dir' passes"
+      ]
+    },
+    {
+      "id": "bind-workdir-set",
+      "declaration_id": "cap-workdir-set",
+      "consumer_unit": "scripts/electron-smoke.js block 19c",
+      "provider": "main.js#setWorkDir",
+      "status": "VERIFIED",
+      "consumer_evidence": [
+        "scripts/electron-smoke.js 19c invokes ipcRenderer.invoke('workdir:set', scratch) and asserts ok + dir === scratch",
+        "the same block asserts a normalize merge runs through the SETTING and leaves no residue in the work dir"
+      ],
+      "provider_evidence": [
+        "app/main.js: ipcMain.handle('workdir:set') funnels into setWorkDir — statSync isDirectory validation, persistSettings, uniform status",
+        "workdir:pick delegates to the same setWorkDir after the native dialog — one write path, no drift"
+      ]
+    },
+    {
+      "id": "bind-workdir-pick",
+      "declaration_id": "cap-workdir-pick",
+      "consumer_unit": "merge.js#pickWorkDir",
+      "provider": "main.js#ipcMain.handle workdir:pick",
+      "status": "ACCEPTED",
+      "consumer_evidence": [
+        "app/merge.js: pickWorkDir busy-guards, invokes 'workdir:pick', re-renders on a non-canceled result",
+        "the Change… button and its title are wired to pickWorkDir (app/merge.js bottom)"
+      ],
+      "provider_evidence": [
+        "app/main.js: dialog.showOpenDialog with openDirectory+createDirectory; canceled → { ...status, canceled: true } (no-op contract)",
+        "a chosen path goes through setWorkDir — same validation and persistence as the programmatic seam"
+      ]
+    },
+    {
+      "id": "bind-workdir-reset",
+      "declaration_id": "cap-workdir-reset",
+      "consumer_unit": "merge.js#resetWorkDir",
+      "provider": "main.js#ipcMain.handle workdir:reset",
+      "status": "VERIFIED",
+      "consumer_evidence": [
+        "app/merge.js: resetWorkDir invokes 'workdir:reset' then re-renders; the Reset button visibility tracks the setting",
+        "scripts/electron-smoke.js 19c: 'reset restores the default' + 'sheet row back to the default label' + 'reset button hidden again' all pass"
+      ],
+      "provider_evidence": [
+        "app/main.js: workdir:reset nulls settings.workDir, persists, returns the uniform status",
+        "renderer-side row returns to the exact v2.6.0 preprocessing semantics (hidden folder beside the output)"
+      ]
+    },
+    {
+      "id": "bind-engine-workdir",
+      "declaration_id": "dep-engine-workdir",
+      "consumer_unit": "ffmpeg.js#merge",
+      "provider": "main.js#job:start merge branch",
+      "status": "VERIFIED",
+      "consumer_evidence": [
+        "app/ffmpeg.js merge: workBase = job.workDir (string, trimmed) else path.dirname(job.output); ensureWorkspace preflight; tmpDir under workBase",
+        "scripts/test-cut.js 9l: merge with workDir observes intermediates inside the remote dir and both dirs cleaned"
+      ],
+      "provider_evidence": [
+        "app/main.js job:start: settings.workDir injected into job.workDir unless the job carries an explicit one — single source of truth",
+        "scripts/electron-smoke.js 19c proves the injection path end-to-end (merge ran through the configured work dir without the renderer sending it)"
+      ]
+    },
+    {
+      "id": "bind-statfs",
+      "declaration_id": "dep-statfs",
+      "consumer_unit": "ffmpeg.js#ensureWorkspace (and main.js#freeSpace)",
+      "provider": "Node.js fs module (statfsSync)",
+      "status": "ACCEPTED",
+      "consumer_evidence": [
+        "app/ffmpeg.js ensureWorkspace: typeof fs.statfsSync guard, bsize*bavail free computation, refusal with numbers when free < need",
+        "app/main.js freeSpace: same guard; null when unavailable so the UI shows no figure rather than a wrong one",
+        "scripts/test-cut.js 9l: statfs-stubbed refusal-with-numbers, roomy pass, and absent-statfs skip all verified"
+      ],
+      "provider_evidence": [
+        "Node 18.9+ exposes fs.statfsSync; Electron 42 (Node 22+) ships it — the runtime is pinned in package.json devDependencies",
+        "feature detection keeps older runtimes functional with the check skipped (tested by deletion stub)"
+      ]
+    },
+    {
+      "id": "bind-atomic-writers",
+      "declaration_id": "cap-atomic-writers",
+      "consumer_unit": "renderer.js#startTool / cut dispatch",
+      "provider": "ffmpeg.js#cut, convert, extract, capture, merge",
+      "status": "VERIFIED",
+      "consumer_evidence": [
+        "app/renderer.js: on job ok the renderer sets state.lastOutput = output and reports 'Saved …' — it depends on ok implying the artifact landed on the chosen name",
+        "scripts/electron-smoke.js 19d: an IPC-cancelled cut leaves no partial and no .vidcut residue — the renderer can never surface a name whose file is absent"
+      ],
+      "provider_evidence": [
+        "app/ffmpeg.js: every writer lands in partPath(job.output), validates (validSegmentOutput / checkJpeg / validMergeOutput), and publishPart renames only on success; dropFile in finally",
+        "scripts/test-cut.js: cancel-leaves-no-residue offline (replacing the v2.6.0 tolerated-residue workaround), truncated-output validation, JPEG SOI/EOI checks"
+      ]
+    }
+  ]
+}

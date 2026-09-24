@@ -8,11 +8,18 @@
  * escalates to SIGKILL after 3 s. State changes surface through
  * 'started' / 'stopped' / 'failed' events, never through polling.
  *
+ * Output naming follows the app-wide convention (see naming.js): a
+ * box-<stamp>.mp4 that already exists is never overwritten — the
+ * recording lands on box-<stamp> 2.mp4, then 3, 4… instead. This is
+ * the one file the app creates without a save dialog, so the
+ * idempotent bump is applied here, at the single naming point.
+ *
  * Paradigm: main-process orchestrator; failures reset the machine. */
 
 const { spawn } = require('child_process')
 const path = require('path')
 const EventEmitter = require('events')
+const { nextFreePath } = require('./naming')
 
 const STOP_ESCALATE_MS = 3000
 
@@ -48,7 +55,10 @@ class Recorder extends EventEmitter {
     const pad = value => String(value).padStart(2, '0')
     const stamp = pad(now.getFullYear() % 100) + pad(now.getMonth() + 1) + pad(now.getDate()) +
       '-' + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds())
-    this.output = path.join(outputDir, `box-${stamp}.mp4`)
+    // Idempotent and ascending, app-wide: an existing box-<stamp>.mp4
+    // (re-record in the same second, or an older file) bumps to " 2",
+    // " 3"… — recordings never overwrite anything.
+    this.output = nextFreePath(path.join(outputDir, `box-${stamp}.mp4`))
     this.stopping = false
     this.startedAt = Date.now()
 

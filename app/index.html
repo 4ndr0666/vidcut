@@ -14,12 +14,20 @@
     <span class="spacer"></span>
     <span id="file-chip" hidden></span>
     <span class="spacer"></span>
-    <button id="open-btn" class="hud-button" type="button">Open video…</button>
+    <button id="open-btn" class="hud-button" type="button" title="Open a video (Ctrl+O)">Open video…</button>
   </header>
 
   <main id="stage">
     <video id="player" preload="metadata"></video>
     <canvas id="wave" hidden></canvas>
+    <!-- Scrub HUD: fades in at the top-center of the picture while
+         ←/→ is held, mirroring the playhead's position in realtime
+         (timestamp + miniature timeline). Pure feedback — it never
+         intercepts the pointer. -->
+    <div id="scrub-overlay" aria-hidden="true">
+      <span id="scrub-time">0:00.0</span>
+      <div id="scrub-track"><div id="scrub-fill"></div></div>
+    </div>
     <div id="dropzone">
       <svg class="glyph-icon" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path class="glyph-ring-1" d="M 64,12 A 52,52 0 1 1 63.9,12 Z" />
@@ -44,14 +52,14 @@
         </svg>
       </button>
       <div id="speed-group" role="group" aria-label="Playback speed">
-        <button id="speed-down-btn" class="hud-button icon" type="button" title="Slower playback (0.2× floor)"
+        <button id="speed-down-btn" class="hud-button icon" type="button" title="Slower playback ([) — 0.2× floor"
                 aria-label="Slower playback" disabled>
           <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M7.5 4 L3 8 L7.5 12 Z M13 4 L8.5 8 L13 12 Z"/>
           </svg>
         </button>
-        <span id="speed-chip" title="Playback rate — click to reset to 1.0×">1.0×</span>
-        <button id="speed-up-btn" class="hud-button icon" type="button" title="Faster playback (2.0× ceiling)"
+        <span id="speed-chip" title="Playback rate — click or Backspace resets to 1.0×">1.0×</span>
+        <button id="speed-up-btn" class="hud-button icon" type="button" title="Faster playback (]) — 2.0× ceiling"
                 aria-label="Faster playback" disabled>
           <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M8.5 4 L13 8 L8.5 12 Z M3 4 L7.5 8 L3 12 Z"/>
@@ -74,7 +82,7 @@
               aria-label="Jump to video start" disabled>
         <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3.5 V12.5 M13 4 L6.5 8 L13 12 Z"/></svg>
       </button>
-      <button id="nav-in-btn" class="hud-button icon" type="button" title="Jump to clip start ([)"
+      <button id="nav-in-btn" class="hud-button icon" type="button" title="Jump to clip start (Shift+Home)"
               aria-label="Jump to clip start" disabled>
         <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 3.5 L5.5 8 L10.5 12.5"/></svg>
       </button>
@@ -100,7 +108,7 @@
       <input id="out-input" class="time-input" type="text" maxlength="12" value="00:00:00.000"
              title="Clip end (HH:MM:SS.mmm) — grab with the End button" disabled
              autocomplete="off" spellcheck="false">
-      <button id="nav-out-btn" class="hud-button icon" type="button" title="Jump to clip end (])"
+      <button id="nav-out-btn" class="hud-button icon" type="button" title="Jump to clip end (Shift+End)"
               aria-label="Jump to clip end" disabled>
         <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.5 L10.5 8 L5.5 12.5"/></svg>
       </button>
@@ -111,34 +119,65 @@
       <span class="spacer"></span>
       <span id="sel-info">no source loaded</span>
       <span class="spacer"></span>
-      <button id="cut-btn" class="hud-button primary" type="button" disabled>Cut</button>
-      <button id="cancel-btn" class="hud-button" type="button" hidden>Cancel</button>
+      <button id="cut-btn" class="hud-button primary" type="button" title="Cut the marked clip (Enter)" disabled>Cut (Enter)</button>
+      <button id="cancel-btn" class="hud-button" type="button" title="Cancel the running job (Escape)" hidden>Cancel</button>
     </div>
 
     <div class="row row-features">
-      <button id="capture-btn" class="hud-button" type="button" title="Save the current frame as a JPG" disabled>Capture</button>
-      <button id="extract-btn" class="hud-button" type="button" title="Extract the clip's audio as MP3" disabled>Extract Audio</button>
-      <button id="convert-btn" class="hud-button" type="button" title="Re-encode the clip as a compatible MP4" disabled>Convert</button>
+      <!-- MUTE is a state, not an action: while pressed it silences the
+           preview AND every video file vidcut writes (Cut / Convert /
+           Merge) — what you hear while scrubbing is what the output
+           contains. Extract Audio is exempt (it IS the audio); capture
+           writes an image. -->
+      <button id="mute-btn" class="hud-button" type="button"
+              title="Mute — while on, the preview is silent and Cut / Convert / Merge write silent video (U)"
+              aria-pressed="false">
+        <svg class="icon-svg" id="icon-sound" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3 6 H5.5 L9 3 V13 L5.5 10 H3 Z"/>
+          <path d="M11.5 5.8 A 3.4 3.4 0 0 1 11.5 10.2"/>
+        </svg>
+        <svg class="icon-svg" id="icon-muted" viewBox="0 0 16 16" aria-hidden="true" hidden>
+          <path d="M3 6 H5.5 L9 3 V13 L5.5 10 H3 Z"/>
+          <path d="M11.5 6 L14.5 10 M14.5 6 L11.5 10"/>
+        </svg>
+        Mute (U)
+      </button>
+      <button id="capture-btn" class="hud-button" type="button" title="Save the current frame as a JPG into ~/Pictures/screenshots — no dialog" disabled>Capture (S)</button>
+      <button id="extract-btn" class="hud-button" type="button" title="Extract the clip's audio as MP3" disabled>Extract Audio (A)</button>
+      <button id="convert-btn" class="hud-button" type="button" title="Re-encode the clip as a compatible MP4" disabled>Convert (C)</button>
       <span class="spacer"></span>
-      <button id="merge-btn" class="hud-button" type="button" title="Merge several files into one">Merge Files…</button>
-      <button id="record-btn" class="hud-button" type="button" title="Record the screen (Wayland / wf-recorder)">Record…</button>
-      <button id="help-btn" class="hud-button" type="button" title="Open the vidcut repository">Help</button>
+      <button id="merge-btn" class="hud-button" type="button" title="Merge several files into one">Merge… (M)</button>
+      <button id="record-btn" class="hud-button" type="button" title="Record the screen (Wayland / wf-recorder)">Record… (R)</button>
+      <button id="help-btn" class="hud-button" type="button" title="Keyboard shortcuts (?)">Help (?)</button>
     </div>
 
     <div class="row row-status">
       <div id="progress" hidden><div id="progress-fill"></div></div>
       <span id="status">Drop a video anywhere to begin.</span>
-      <button id="show-btn" class="hud-button link" type="button" hidden>Show in folder</button>
+      <button id="show-btn" class="hud-button link" type="button" title="Reveal the last output in the file manager (F)" hidden>Show in folder (F)</button>
     </div>
   </footer>
 
-  <!-- Modal sheets. Structure is the bugfix: both sheets carry the
+  <!-- Modal sheets (merge / record / shortcuts). Structure is the
+       bugfix: every sheet carries the
        hidden attribute in markup, so a panel can never render — or
        push the flexbox around — until the user explicitly opens it. -->
   <section id="merge-sheet" class="sheet" hidden>
     <div class="sheet-panel">
       <div class="sheet-title">Merge files</div>
       <ol id="merge-list"></ol>
+      <!-- Work dir: where PREPROCESSING (normalizing mismatched inputs)
+           writes its temporary parts. Default is a hidden folder beside
+           the merged output; a chosen dir is for when that disk cannot
+           hold roughly the total size of the inputs — the label shows
+           the free space so the choice is informed before starting. -->
+      <div class="workdir-row" id="workdir-row"
+           title="Where merge preprocessing writes its temporary files — needs roughly the total size of the inputs free">
+        <span id="workdir-label">Temp files: beside the output (default)</span>
+        <span class="spacer"></span>
+        <button id="workdir-change-btn" class="hud-button link" type="button" title="Choose the preprocessing work dir">Change…</button>
+        <button id="workdir-reset-btn" class="hud-button link" type="button" title="Back to temp files beside the output" hidden>Reset</button>
+      </div>
       <div class="sheet-actions">
         <button id="merge-add-btn" class="hud-button" type="button">Add files…</button>
         <button id="merge-clear-btn" class="hud-button" type="button">Clear</button>
@@ -158,6 +197,59 @@
         <button id="record-start-btn" class="hud-button primary" type="button">Start</button>
         <button id="record-stop-btn" class="hud-button" type="button" hidden>Stop &amp; Save</button>
         <button id="record-close-btn" class="hud-button" type="button">Close</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shortcuts sheet: every keybind the map owns, in-app — the cheat
+       sheet IS the Help target now. Hidden in markup like the other
+       sheets (same structural guarantee: it cannot render, flex the
+       layout, or intercept a key until explicitly opened). -->
+  <section id="shortcuts-sheet" class="sheet" hidden>
+    <div class="sheet-panel">
+      <div class="sheet-title">Keyboard</div>
+      <div class="keys-cols">
+        <div class="keys">
+          <div class="keys-group">Playback</div>
+          <span class="k">Space</span><span class="d">Play / pause</span>
+          <span class="k">← / →</span><span class="d">One frame per tap · hold to scrub</span>
+          <span class="k">Shift + ← / →</span><span class="d">Fine scrub (0.05 s)</span>
+          <span class="k">[ / ]</span><span class="d">Speed down / up</span>
+          <span class="k">Backspace</span><span class="d">Speed reset (1.0×)</span>
+          <div class="keys-group">Navigate</div>
+          <span class="k">Home / End</span><span class="d">Video start / end</span>
+          <span class="k">Shift+Home / End</span><span class="d">Clip start / end</span>
+          <span class="k">1 – 9</span><span class="d">Chapter starts (1 = video start)</span>
+          <span class="k">0</span><span class="d">Video end</span>
+          <span class="k">= / −</span><span class="d">Zoom the video in / out</span>
+          <span class="k">Wheel</span><span class="d">Zoom the video (1×–6×)</span>
+          <span class="k">Ctrl + drag</span><span class="d">Move the magnified picture</span>
+          <span class="k">Ctrl+0</span><span class="d">Reset zoom — picture centered</span>
+        </div>
+        <div class="keys">
+          <div class="keys-group">Mark &amp; output</div>
+          <span class="k">I / O</span><span class="d">Mark clip start / end</span>
+          <span class="k">Ctrl+Z</span><span class="d">Undo a clip-mark change</span>
+          <span class="k">Ctrl+Shift+Z</span><span class="d">Redo (or Ctrl+Y)</span>
+          <span class="k">Enter</span><span class="d">Cut the clip</span>
+          <span class="k">U</span><span class="d">Mute — preview + written files</span>
+          <span class="k">S</span><span class="d">Capture frame → ~/Pictures/screenshots</span>
+          <span class="k">A</span><span class="d">Extract audio (MP3)</span>
+          <span class="k">C</span><span class="d">Convert clip (MP4)</span>
+          <span class="k">M</span><span class="d">Merge files</span>
+          <span class="k">R</span><span class="d">Record screen</span>
+          <div class="keys-group">App</div>
+          <span class="k">Ctrl+O</span><span class="d">Open a video</span>
+          <span class="k">F</span><span class="d">Show the last output in its folder</span>
+          <span class="k">?</span><span class="d">This sheet</span>
+          <span class="k">Escape</span><span class="d">Close a sheet · cancel a running job</span>
+        </div>
+      </div>
+      <div class="sheet-hint">In a sheet: Enter runs the primary action, Escape closes, and the global tools stay suspended. Drag the timeline or the green/orange flags to set the clip — Ctrl+Z walks marks back. Double-click the video for fullscreen; Ctrl+drag pans once zoomed.</div>
+      <div class="sheet-actions">
+        <button id="keys-repo-btn" class="hud-button link" type="button">Open the repository</button>
+        <span class="spacer"></span>
+        <button id="keys-close-btn" class="hud-button" type="button">Close</button>
       </div>
     </div>
   </section>

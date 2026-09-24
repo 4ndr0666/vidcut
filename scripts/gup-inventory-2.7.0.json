@@ -1,0 +1,177 @@
+{
+  "commit": "20401be57e51864bc50112c6d087515ea574f99c",
+  "protocol": "GUP v5.2",
+  "repository": "/home/z/my-project/vidcut",
+  "tracked_files": [
+    {
+      "path": ".github/dependabot.yml",
+      "sha256": "7d452c436d6024ab49d8edc447eb010176c913fab0801cb4858920974d734d29",
+      "size": 200
+    },
+    {
+      "path": ".github/workflows/codeql.yml",
+      "sha256": "90276ecd3ba0069e36807ffcee152f2b63658de0362bda5cadbdd33e4a69725a",
+      "size": 4685
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "676937b562d67036e219fcf0988557a164dd95e9b8cf840b8524ea2d0904112b",
+      "size": 38
+    },
+    {
+      "path": ".nvmrc",
+      "sha256": "28d5d468fcfe77594f84d719d1550610e3ff0904f1601e7d0e93325244965451",
+      "size": 9
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "f3eac6adfa3dd9332b033a4aa8f565d05947b371fa729ceb6712a0123c5dcc46",
+      "size": 1071
+    },
+    {
+      "path": "README.md",
+      "sha256": "d785c999416eefff56f0b2c01a0cbf80a06995f9dff00ac9c3da39d7e2d74573",
+      "size": 11026
+    },
+    {
+      "path": "app/assets/fonts/cinzel-decorative-latin.woff2",
+      "sha256": "0826d61da654ac987a9f0046cdc6bcb95eba7f8d2d20f93531d51d008fedea14",
+      "size": 15488
+    },
+    {
+      "path": "app/assets/fonts/orbitron-latin.woff2",
+      "sha256": "ee6acc5ad5349018f9ca71fab8118144160e110838931874150a1ac3f97db38d",
+      "size": 6528
+    },
+    {
+      "path": "app/assets/fonts/roboto-mono-latin.woff2",
+      "sha256": "ce7027efa5c894e8b244b0ca05ec121b6a85655957afd9c76c59b56910de7d4e",
+      "size": 12936
+    },
+    {
+      "path": "app/assets/logo.png",
+      "sha256": "abd593aeffe3bd4ee149dcc000a3a09f4d132c8d2a56f1350441e6fc8314629c",
+      "size": 3639
+    },
+    {
+      "path": "app/bin/ffmpeg",
+      "sha256": "e1c8c3c8c2073d9f83a8d74423c3eff79eaaa4227ca427720cab314eee1d7c57",
+      "size": 75270088
+    },
+    {
+      "path": "app/bin/ffmpeg.exe",
+      "sha256": "1c247198bdf45a176a2a8580eb95f362ee040fe00ec5882c71fd52ba0104a54b",
+      "size": 43107328
+    },
+    {
+      "path": "app/ffmpeg.js",
+      "sha256": "9973354818dbd46512760f7335d6c18f27c6f4c9e3f4b976db4fe65d6a1b49e6",
+      "size": 40196
+    },
+    {
+      "path": "app/index.html",
+      "sha256": "8e82ad1bf44fac5d1b19e1c1fccd8fba7866c607e89f30fae288f0fc190e90cc",
+      "size": 14883
+    },
+    {
+      "path": "app/main.css",
+      "sha256": "f29d97dc9523fae346b1dbf0044f58a97e48f867d99989c92324bb19fe7f2484",
+      "size": 21173
+    },
+    {
+      "path": "app/main.js",
+      "sha256": "44d60860c9089da97da1dae0148d03ea2ce96b9dc507127e2b560f72ee4df972",
+      "size": 14706
+    },
+    {
+      "path": "app/merge.js",
+      "sha256": "4d1c638e1d1ce00a95c301988e4da33ba4d00dcc99792b8eea776c6a1c503321",
+      "size": 7596
+    },
+    {
+      "path": "app/naming.js",
+      "sha256": "8751793eb1461792126071060f0572516afc9ca98a93ca81ed94a0d1255c70f3",
+      "size": 1368
+    },
+    {
+      "path": "app/record.js",
+      "sha256": "7fcd15e88c565f5bfb71c6563bdf1e2b1173f84155e70130fb7e781fa3f39a44",
+      "size": 4364
+    },
+    {
+      "path": "app/recorder.js",
+      "sha256": "fb3a673cab4909ce935afbe7a5746e71fa5f837eb3dc5520b9216423b054bf18",
+      "size": 4974
+    },
+    {
+      "path": "app/renderer.js",
+      "sha256": "1cec0e099fdd544d56c9198306c5ac18895e497c3609630aaf1e945453142ec7",
+      "size": 51157
+    },
+    {
+      "path": "app/server.js",
+      "sha256": "d344fd51663b440be9f4841bef47ec114f23dfb57d30a63a7b20429c03dee2a2",
+      "size": 3514
+    },
+    {
+      "path": "app/wave.js",
+      "sha256": "865ec7f41823e67901f977ce11d0b216bdacf9e2ba1b7b1b159936b7694974bc",
+      "size": 3899
+    },
+    {
+      "path": "build/icons/icon.png",
+      "sha256": "abd593aeffe3bd4ee149dcc000a3a09f4d132c8d2a56f1350441e6fc8314629c",
+      "size": 3639
+    },
+    {
+      "path": "package.json",
+      "sha256": "f6a695be573ec814536bd49fea71c9e0eacb449fc9e1ccf51d7956ac41765ef4",
+      "size": 1202
+    },
+    {
+      "path": "screenshot.png",
+      "sha256": "90eb67ea7746a0c9e52d3871cf99e8c675549b47b382208219c12604fa6e1d68",
+      "size": 75725
+    },
+    {
+      "path": "scripts/electron-smoke.js",
+      "sha256": "425180597651b05b2c9b0d81db24a0dcf94dd9735c11570d687e2de63b486cc6",
+      "size": 62398
+    },
+    {
+      "path": "scripts/gup-inventory-2.1.0.json",
+      "sha256": "0f8d3c33bf85c3917a7fb8acc57cfeb8edbbd18c4515792930c0ca86b9b7b93c",
+      "size": 4872
+    },
+    {
+      "path": "scripts/gup-proof-2.1.0.json",
+      "sha256": "ccc94aa0444116cbf578bf78be59347b1ecbc889bbd4be3fe413bd0f1602fe7a",
+      "size": 10179
+    },
+    {
+      "path": "scripts/gup-review-2.1.0.json",
+      "sha256": "acc6f5d0c4c06d4bc3d937b38b44e8321fa64d4725517b7febfc96f391fca6de",
+      "size": 15008
+    },
+    {
+      "path": "scripts/gup-verify.js",
+      "sha256": "f5a189f83e83d51c146db2635c3a22dbe7ba49484c9b234d2a2b32bdf9b44982",
+      "size": 6332
+    },
+    {
+      "path": "scripts/test-cut.js",
+      "sha256": "5a004a4fad28876b82c30cfcb13e3df841c59fe8c5add1c0f792be7f45d97171",
+      "size": 38442
+    },
+    {
+      "path": "scripts/test-server.js",
+      "sha256": "1d3330f892634bb52301d4a410e4f6b800af399ed8929f4a4a8686c7cfde2a46",
+      "size": 4613
+    },
+    {
+      "path": "scripts/visual-check.js",
+      "sha256": "f19a54800cd63f44e1e6bd62780e3947be359b2a9e1f3743fde42f68a011f734",
+      "size": 8485
+    }
+  ]
+}

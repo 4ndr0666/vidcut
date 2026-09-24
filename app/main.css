@@ -28,6 +28,13 @@
   font-display: swap;
   src: url('./assets/fonts/roboto-mono-latin.woff2') format('woff2');
 }
+@font-face {
+  font-family: 'Cinzel Decorative';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/cinzel-decorative-latin.woff2') format('woff2');
+}
 
 :root {
   --bg-dark-base: #050A0F;
@@ -67,10 +74,13 @@ body {
 /* Explicit hidden handling — the classed elements below set their
  * own display value, which would otherwise beat the UA rule.
  * (.sheet[hidden] is THE structural guarantee that no panel can ever
- * render — or flex the layout — before the user opens it.) */
+ * render — or flex the layout — before the user opens it.)
+ * #workdir-reset-btn[hidden] joins the list: the work dir row offers
+ * Reset only while a custom dir is actually set. */
 #dropzone[hidden], #file-chip[hidden], #cancel-btn[hidden],
 #show-btn[hidden], #progress[hidden], #flag-in[hidden], #flag-out[hidden],
-#wave[hidden], .sheet[hidden], #record-stop-btn[hidden], .icon-svg[hidden] {
+#wave[hidden], .sheet[hidden], #record-stop-btn[hidden], .icon-svg[hidden],
+#workdir-reset-btn[hidden] {
   display: none;
 }
 
@@ -135,8 +145,16 @@ body {
   object-fit: contain;
   display: block;
   background: #000;
+  will-change: transform; /* zoom/pan rides this transform */
   cursor: pointer;
 }
+
+/* Ctrl+drag pan affordance: while Ctrl is held over a magnified
+ * picture the cursor promises the grab, and it grabs during the
+ * drag. (The video element covers the stage, so the cursor rides
+ * it; the two-ID selectors outrank #player's pointer.) */
+#stage.pan-ready #player { cursor: grab; }
+#stage.panning #player { cursor: grabbing; }
 
 #dropzone {
   position: absolute;
@@ -289,14 +307,48 @@ body.dragging #dz-label {
   box-shadow: 0 0 8px var(--glow-cyan-active);
 }
 
+/* The clip flags are draggable bounds, not decorations: the hand
+ * cursor signals grabbability, and an invisible ::after apron widens
+ * the 3px bar into a comfortable ~13px hit target (pseudo-element
+ * hits register on the flag itself). */
 .flag {
   position: absolute;
   top: 3px;
   bottom: 3px;
   width: 3px;
   border-radius: 2px;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;           /* pointer dragging, never scrolling */
+}
+
+/* Chapter ticks — thin cyan notches crossing the track at each
+ * chapter start (renderer-positioned by ratio). Pure markers: they
+ * never intercept the pointer, so flag drags and timeline scrubs
+ * pass straight through them. */
+.chapter-tick {
+  position: absolute;
+  top: 7px;
+  height: 12px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: rgba(21, 255, 255, 0.5);
+  box-shadow: 0 0 5px rgba(21, 255, 255, 0.3);
   pointer-events: none;
 }
+
+.flag::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: -5px;
+  right: -5px;
+}
+
+.flag:hover { filter: brightness(1.35); }
+.flag.dragging, body.flag-dragging .flag { cursor: grabbing; }
 .flag-in { background: var(--flag-in); box-shadow: 0 0 6px rgba(74, 222, 128, 0.7); }
 .flag-out { background: var(--flag-out); box-shadow: 0 0 6px rgba(251, 146, 60, 0.7); }
 
@@ -336,6 +388,16 @@ body.dragging #dz-label {
 .hud-button:disabled {
   opacity: 0.25;
   cursor: not-allowed;
+}
+
+/* A latched toggle (the MUTE button): aria-pressed carries the state,
+ * so the button reads as ON at rest — cyan text, lit border, a faint
+ * glow — instead of relying on the momentary :active flash. */
+.hud-button[aria-pressed="true"] {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan-border-hover);
+  background-color: var(--accent-cyan-bg-hover);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.22);
 }
 
 .hud-button:focus {
@@ -454,6 +516,71 @@ body.busy #dropzone { pointer-events: none; }
 }
 
 /* --------------------------------------------------------
+ * Scrub HUD — realtime visual feedback while ←/→ is held
+ * --------------------------------------------------------
+ *
+ * A semi-translucent black card fades in at the top-center of the
+ * picture showing the timestamp the scrub is heading toward, in
+ * Cinzel Decorative #15FFFF, over a miniature of the timeline (the
+ * fill mirrors the playhead ratio). It is pure feedback: opacity
+ * only, never display, so the 140 ms fade works both ways and the
+ * element can never intercept a pointer or affect layout. */
+
+#scrub-overlay {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 24px 14px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(21, 255, 255, 0.28);
+  border-radius: 10px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 140ms ease, visibility 140ms ease;
+  pointer-events: none;
+  z-index: 5;                    /* above the picture & wave, below sheets */
+}
+
+#scrub-overlay.on {
+  opacity: 1;
+  visibility: visible;
+}
+
+#scrub-time {
+  font-family: 'Cinzel Decorative', 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  color: #15FFFF;
+  text-shadow: 0 0 14px rgba(21, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Miniature timeline — the fill width mirrors the playhead ratio
+ * (set inline by the renderer on every scrub event). */
+#scrub-track {
+  width: 168px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(21, 255, 255, 0.22);
+  overflow: hidden;
+}
+
+#scrub-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: #15FFFF;
+  box-shadow: 0 0 8px rgba(21, 255, 255, 0.6);
+}
+
+/* --------------------------------------------------------
  * Speed group & segment time inputs
  * ----------------------------------------------------- */
 
@@ -531,7 +658,7 @@ body.busy #dropzone { pointer-events: none; }
 .sheet-panel {
   flex: 0 1 560px;
   min-width: 320px;
-  max-height: 72vh;
+  max-height: 86vh;
   overflow: auto;
   padding: 18px 20px;
   background: rgba(10, 19, 26, 0.96);
@@ -562,6 +689,14 @@ body.busy #dropzone { pointer-events: none; }
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 16px;
+  padding: 10px 0 2px;
+  /* Sticky inside the scrollable panel: the Close/primary buttons
+   * stay reachable even when a long sheet (the shortcuts grid on a
+   * short window) has to scroll. */
+  position: sticky;
+  bottom: 0;
+  background: rgba(10, 19, 26, 0.98);
+  border-top: 1px solid rgba(0, 229, 255, 0.12);
 }
 
 /* ---- merge file list ---- */
@@ -611,6 +746,31 @@ body.busy #dropzone { pointer-events: none; }
 }
 .merge-x:hover { color: var(--error); }
 
+/* Work dir row — sits between the file list and the actions: the
+ * preprocessing scratch location plus its live free-space figure,
+ * with Change…/Reset as quiet link buttons (one decision, not a
+ * dialog-heavy settings surface). */
+.workdir-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 6px 6px;
+  border-top: 1px solid rgba(0, 229, 255, 0.08);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.08);
+}
+
+#workdir-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 /* ---- record sheet ---- */
 
 #record-elapsed {
@@ -624,3 +784,52 @@ body.busy #dropzone { pointer-events: none; }
 }
 
 #record-sheet.live #record-elapsed { color: var(--flag-out); text-shadow: 0 0 16px rgba(251, 146, 60, 0.6); }
+
+/* ---- shortcuts sheet ---- */
+
+/* Two compact keybind columns side by side (wrapping to one on
+ * narrow windows): each is a kbd-chip → description grid. */
+.keys-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 28px;
+  margin-top: 14px;
+}
+
+.keys {
+  flex: 1 1 260px;
+  min-width: 240px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 12px;
+  align-items: baseline;
+}
+
+.keys-group {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+.keys .k {
+  justify-self: start;
+  white-space: nowrap;
+  color: var(--accent-cyan);
+  font-size: 11.5px;
+  border: 1px solid var(--accent-cyan-border-idle);
+  border-radius: 4px;
+  padding: 1px 7px;
+  background: rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.keys .d {
+  color: var(--text-cyan-active);
+  font-size: 12.5px;
+  min-width: 0;
+}

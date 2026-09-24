@@ -1,0 +1,211 @@
+{
+  "protocol": "GUP v5.2",
+  "revision": "vidcut 2.7.0",
+  "baseline": "20401be (v2.6.0)",
+  "scope": "ffx-aligned cut hardening (atomic validated writers + genpts), movable merge work dir with disk preflight, superset gap mitigation",
+  "notes": [
+    "Atomizer soundness: the v5.2 brace scanner treats apostrophes inside comments and quotes inside regex literals as string openers. v2.6.0 spans for concatList were provably corrupt (its 'closing brace' landed inside normalizeArgs) and normalizeArgs/parseStreams were never extracted at all — silent Gate-1 blind spots. This revision makes every unit extract with a sound span (36/36 declared functions, each ending at its true brace): concatList now uses the RegExp constructor instead of a /'/g literal, and three in-body comments lost their apostrophes. Behavior is untouched — 145/145 offline and 195/195 smoke checks prove it.",
+    "workdir:set carries no renderer caller by design: it is the validation+persist primitive that workdir:pick delegates to and the smoke harness consumes directly (declared consumer, observed use — GUP alignment rule satisfied).",
+    "renderer.js is byte-identical to the baseline (0-line diff); it is listed in PAIRS to prove that by hash."
+  ],
+  "units": {
+    "ffmpeg.buildArgs": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "orchestrator",
+      "digest": "Builds the cut argv: input-seek -ss before -i, -t clip length, optional v/a maps, mute -an, copy or x264 re-encode, metadata passthrough.",
+      "rationale": "Unchanged geometry (same -ss/-i/-t order, same maps, same encoder settings, output last token). Superset addition: -fflags +genpts as an input flag before -i — measured byte-identical output on well-formed fixtures (same duration, same size) and it rescues lossless copies on missing-PTS sources that previously fell back to a lossy re-encode. Locked by arg-sanity tests including two new genpts assertions."
+    },
+    "ffmpeg.cut": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "orchestrator",
+      "digest": "Cuts a segment: copy attempt with automatic re-encode fallback, single-flight slot, progress over the clip duration.",
+      "rationale": "Preserves every baseline guarantee: same argv, same fallback trigger (fatal/cancelled rethrow, else re-encode), same forceReencode bypass, same validation rejects, same mode strings. Superset additions: work lands in a <stem>.vidcut.<ext> part file and is renamed onto the user's name only after validSegmentOutput passes (moov walk + duration floor, one-sided for copy keyframe snap); a cancelled or failed cut now leaves NOTHING on the chosen name — v2.6.0 left the partial there (the old test suite literally worked around it). Degenerate part===input is rejected. Offline tests assert cancel-leaves-no-residue both offline and through the real IPC."
+    },
+    "ffmpeg.convert": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "orchestrator",
+      "digest": "Deliberate compatibility re-encode of the clip to MP4 with mute support.",
+      "rationale": "Same convertArgs, same validation, same mode. Superset: atomic part-file publish + post-run validation (structure + duration floor + runaway ceiling) with part cleanup in finally — a cancelled convert can no longer leave residue on the chosen name."
+    },
+    "ffmpeg.extract": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "orchestrator",
+      "digest": "Extracts the clip audio as VBR-best MP3.",
+      "rationale": "Same extractArgs, same mode. Superset: atomic part publish + validation (size floor + duration floor; moov walk not applicable to MP3 — passed mp4Family=false)."
+    },
+    "ffmpeg.capture": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "orchestrator",
+      "digest": "Saves one frame at the playhead as a JPG.",
+      "rationale": "Same captureArgs and validation rejects. Superset: atomic part publish + checkJpeg (SOI head, EOI tail, size floor) — a truncated capture is refused instead of renamed onto the user's name."
+    },
+    "ffmpeg.merge": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "orchestrator",
+      "digest": "Probe-first merge engine: uniform inputs concat losslessly, mismatched inputs normalize per-file onto a shared canvas, one bad file skipped not fatal, atomic validated publish.",
+      "rationale": "All v2.6.0 guarantees preserved: fast path args and fallback, planner contract, anullsrc injection, genpts on normalize, fault tolerance, moov+duration validation, atomic publish beside the output, temp-dir removal in finally, progress mapping, result contract {mode,merged,reencoded,skipped}. Superset additions: (1) intermediates honor job.workDir (default unchanged: hidden folder beside the output, keeping the same-filesystem final rename; the part file ALWAYS stays beside the output); (2) ensureWorkspace disk preflight refuses a work dir with less free space than the summed input sizes before any encoding starts, with the numbers in the message; (3) part-vs-inputs collision guard; (4) the duplicated dropPart closure became the shared dropFile helper; (5) two in-body comments rephrased without apostrophes for atomizer soundness (comment-only). Work-dir E2E: merge with a remote work dir observed writing intermediates there, both dirs cleaned."
+    },
+    "ffmpeg.concatList": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "n/a",
+      "digest": "Escapes single quotes for the concat demuxer file-list syntax.",
+      "rationale": "Behavior-identical rewrite: new RegExp(\"'\",'g') instead of the /'/g literal. The quote inside the regex literal is what corrupted the atomizer's span since v2.6.0 (its extracted 'closing brace' provably landed inside normalizeArgs); the constructor form is scanner-unambiguous. All merge tests — including hostile-filename paths that exercise quote escaping through the real stdin concat — still pass."
+    },
+    "ffmpeg.partPath": {
+      "verdict": "PASS",
+      "class": "n/a",
+      "digest": "Derives the <stem>.vidcut.<ext> working name for any output, preserving the real extension so ffmpeg infers the container; extensionless outputs gain .mp4.",
+      "rationale": "New pure helper extracted from merge's inline logic and shared by all five writers (D7 dedupe). Unit-tested for mp4/mp3/mkv/extensionless and hostile names."
+    },
+    "ffmpeg.checkJpeg": {
+      "verdict": "PASS",
+      "class": "n/a",
+      "digest": "Structural JPEG validation: SOI at head, EOI at tail, size floor above a marker-only degenerate.",
+      "rationale": "New validator for the capture writer; closes the fd in finally; unit-tested against a real frame (valid) and a SOI-only stub (invalid)."
+    },
+    "ffmpeg.isJpegPath": {
+      "verdict": "PASS",
+      "class": "n/a",
+      "digest": "Recognizes .jpg/.jpeg outputs for validator dispatch.",
+      "rationale": "Trivial pure predicate; covered by the capture validation tests."
+    },
+    "ffmpeg.validSegmentOutput": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Post-run artifact validation shared by cut/convert/extract: size floor, moov walk for the MP4 family, JPEG markers, duration floor — one-sided for copy cuts (keyframe snap can legitimately lengthen output), ceiling for the frame-exact re-encode paths. Uses the UNcached probe runner so part renames cannot poison the probe cache.",
+      "rationale": "New gate modeled on the merge engine's proven validMergeOutput; empirically calibrated (the probe fixture showed copy cuts run up to a GOP longer). Tests: healthy outputs pass; truncated (55%) fails; floor and ceiling reject synthetic mismatches; keyframe-snapped copy stays valid — locking the one-sided design."
+    },
+    "ffmpeg.humanBytes": {
+      "verdict": "PASS",
+      "class": "n/a",
+      "digest": "Formats byte counts (B..TB) for preflight messages.",
+      "rationale": "Pure formatter, unit-tested across unit boundaries and negative/NaN guards."
+    },
+    "ffmpeg.ensureWorkspace": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Merge normalize-path disk preflight: sums input sizes, stats the work dir (feature-detected statfs), refuses with numbers when free < needed; returns null (check skipped) rather than guessing when sizes or statfs are unavailable.",
+      "rationale": "New gate for the user-requested movable work dir; EAFP (missing data skips, ENOSPC still surfaces naturally mid-run); tested with stubbed statfs for refusal-with-numbers, roomy pass, and statfs-absent skip."
+    },
+    "ffmpeg.dropFile": {
+      "verdict": "PASS",
+      "class": "n/a",
+      "digest": "Best-effort unlink of a working file — cleanup, never the failure itself.",
+      "rationale": "Module-level hoist of the closure the baseline extracted as 'dropPart' (see that record): identical swallow-on-absent semantics, now shared by all five writers instead of five copies."
+    },
+    "ffmpeg.dropPart": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "n/a",
+      "digest": "v2.6.0: the per-merge closure that unlinked the working part file.",
+      "rationale": "MISSING verdict is a rename, not a loss: the closure was hoisted to the module-level dropFile (NEW unit above) with identical semantics and now serves cut/convert/extract/capture/merge — five writers, one helper. Every former dropPart() call site asserts no-residue in the offline and smoke suites."
+    },
+    "ffmpeg.normalizeArgs": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Per-file normalization argv: genpts input repair, max-canvas scale+pad+setsar, one fps, yuv420p, conformant video stream-copied, audio unified to aac/48k/stereo with anullsrc injection for silent sources, -an when muted, faststart.",
+      "rationale": "NEW verdict because v2.6.0's atomizer never extracted this function (comment apostrophe desync — a Gate-1 blind spot this revision closes). Code is byte-identical to v2.6.0 except one comment rephrased without an apostrophe; the E2E normalize-path tests (canvas unify, anullsrc injection, muted) all still pass, so the unit is now genuinely under the hash gate going forward."
+    },
+    "ffmpeg.parseStreams": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Parses the ffmpeg -i banner: duration/bitrate, video (codec/res/fps/pix/SAR), audio (codec/hz/channels), chapters with title binding fenced from input/stream decoys.",
+      "rationale": "NEW verdict because v2.6.0's atomizer never extracted it (same comment-apostrophe blind spot). Code identical to v2.6.0 apart from one comment apostrophe; the full parser test battery (chapter decoys, real FFMETADATA round-trip, SAR/pix/audio shape) still passes. Now under the hash gate going forward."
+    },
+    "main.loadSettings": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "orchestrator",
+      "digest": "Loads persisted settings from userData/settings.json, defaults standing on any failure.",
+      "rationale": "Preserves lastSaveDir parsing exactly; superset: also reads a workDir string. Fail-swallow contract unchanged."
+    },
+    "main.workdirStatus": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Uniform { ok, dir, free } status for the work dir contract; free is null when statfs is unavailable rather than wrong.",
+      "rationale": "New; shared by get/pick/set/reset so the four channels can never disagree."
+    },
+    "main.setWorkDir": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Validates a candidate dir is a folder, persists it, returns the uniform status.",
+      "rationale": "New; the single write path for the setting — workdir:pick and workdir:set both funnel through it (one source of truth). Rejects non-folders with explicit errors."
+    },
+    "main.freeSpace": {
+      "verdict": "PASS",
+      "class": "n/a",
+      "digest": "statfs-based free byte count with feature detection and null-on-unavailable.",
+      "rationale": "New; EAFP — a statfs failure is reported as unknown, never guessed."
+    },
+    "merge.renderWorkDir": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Renders the work dir row: chosen dir plus live free space, or the default-beside-output label; toggles the Reset button.",
+      "rationale": "New; display-only state owned by main — the sheet cannot drift from the engine because job:start injects the setting. Exposed on the module for refresh after pick/reset."
+    },
+    "merge.pickWorkDir": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Opens the native directory picker via workdir:pick and refreshes on a non-canceled choice; busy-guarded.",
+      "rationale": "New; a dismissed dialog is a no-op (canceled flag)."
+    },
+    "merge.resetWorkDir": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Clears the work dir back to the default and refreshes; busy-guarded.",
+      "rationale": "New; restores the exact v2.6.0 preprocessing location semantics."
+    },
+    "merge.open": {
+      "verdict": "PASS",
+      "class": "orchestrator",
+      "digest": "Opens the merge sheet: renders the file list, refreshes the work dir row, reveals via openSheet.",
+      "rationale": "NEW verdict because the baseline defined open as an object-literal arrow the atomizer never extracted; now a named function. Behavior is the baseline render+openSheet plus the workdir refresh; the toolbar entry path now routes through it so the row is always fresh. Smoke-tested both entry paths."
+    },
+    "merge.humanBytes": {
+      "verdict": "PASS",
+      "class": "n/a",
+      "digest": "Renderer-side byte formatter mirroring the engine's, so sheet and error messages speak one language.",
+      "rationale": "New; module-local (no global pollution), same algorithm as ffmpeg.humanBytes — kept local because the renderer has no import path to the main-process module and duplicating five lines beats an IPC round-trip for a pure formatter."
+    },
+    "manual:index.html": {
+      "verdict": "PASS",
+      "class": "n/a",
+      "digest": "Merge sheet gains the workdir row (label + Change/Reset link buttons) between the file list and the actions, with an explanatory comment; all other markup byte-identical.",
+      "rationale": "Hidden-in-markup invariant preserved (the row lives inside the already-hidden sheet); every existing element untouched. Smoke checks assert the row's default label, live dir+free rendering, and reset-button visibility transitions."
+    },
+    "manual:main.css": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "n/a",
+      "digest": "Adds .workdir-row/#workdir-label styles matching the sheet aesthetic; extends the explicit [hidden]-handling rule with #workdir-reset-btn[hidden].",
+      "rationale": "The row styles are additive. The [hidden] rule extension is a FIX caught by live visual review: .hud-button's own display rule beats the UA [hidden] style, so the Reset button rendered in the default state despite hidden=true — the app's existing list of explicitly-hidden toggled buttons (cancel/show/record-stop) documents the exact cascade trap, and the new button now joins that list. Smoke checks now assert computed display in both states so the class of bug cannot recur silently."
+    },
+    "manual:README.md": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "n/a",
+      "digest": "Documents the atomic validated writers, genpts insurance, the merge work dir row and preflight; adds the superset-inventory dev command.",
+      "rationale": "Additive documentation for the new guarantees; no prior guidance removed."
+    },
+    "manual:scripts/test-cut.js": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "n/a",
+      "digest": "Offline suite: +23 checks — genpts arg assertions (index-free), cancel-leaves-no-residue, partPath/checkJpeg/validSegmentOutput/humanBytes units, work-dir merge E2E with intermediate observation, statfs-stubbed preflight refusal/pass/skip.",
+      "rationale": "The removed 9j comment workaround ('output name must not collide with test 6 killed-cut residue') documented a bug this revision fixes — the workaround is dead and gone, the assertion now proves the stronger invariant. One arg assertion was updated for the genpts flag (index-anchored → relation-anchored, more robust). 145/145 pass."
+    },
+    "manual:scripts/electron-smoke.js": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "n/a",
+      "digest": "Smoke suite: +14 checks — workdir get/set/reset IPC contract, sheet row live rendering, merge through the configured work dir with residue checks in both locations, IPC-cancelled cut leaving nothing, computed-display assertions on the Reset button; new long90 fixture.",
+      "rationale": "All 181 baseline checks retained and passing (195 total). The cancelled-cut checks replace an implicit tolerated residue with an explicit zero-residue assertion. The Reset-button checks assert computed display, not just the hidden attribute — the attribute alone passed while the button rendered (caught by the visual review and fixed in main.css this revision)."
+    },
+    "manual:scripts/gup-verify.js": {
+      "verdict": "ACCEPTED_SUPERSET",
+      "class": "n/a",
+      "digest": "GUP driver: hash script resolved from multiple known locations (env override first) instead of one hard-coded path that no longer exists; PAIRS extended with merge.js; proof artifact path derived from the review filename.",
+      "rationale": "The v2.1.0 driver was unrunnable in this environment (stale path); behavior for the semantic gate (verdict + rationale enforcement, MISSING hard fail) is unchanged and stricter in coverage."
+    },
+    "manual:scripts/superset-inventory.js": {
+      "verdict": "PASS",
+      "class": "n/a",
+      "digest": "Feature-to-function matrix asserting 45 features shipped from v2.0.0 onward remain present and wired (marker per feature, per release).",
+      "rationale": "New; operationalizes the superset protocol as a repeatable check (45/45 passing)."
+    }
+  }
+}

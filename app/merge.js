@@ -1,11 +1,15 @@
-/* vidcut merge sheet — file list, add/remove, merge dispatch.
+/* vidcut merge sheet — file list, add/remove, work dir, merge dispatch.
  *
  * THE panel: this sheet's ancestor in the original app rendered
  * expanded on init and pushed the flexbox around until closed.
  * Here it is `hidden` in markup and only ever revealed by explicit
  * user action — the failure is structurally impossible, not merely
  * patched around. The merge job runs through the shared busy lock
- * (single ffmpeg slot, same as every other tool). */
+ * (single ffmpeg slot, same as every other tool).
+ *
+ * The work dir row is display-only state owned by main (settings +
+ * statfs); the merge engine receives the setting via job:start
+ * injection, so this sheet can never drift from what runs. */
 
 module.exports = function createMergeSheet(ctx) {
   const {
@@ -20,6 +24,47 @@ module.exports = function createMergeSheet(ctx) {
   const clearBtn = document.getElementById('merge-clear-btn')
   const startBtn = document.getElementById('merge-start-btn')
   const closeBtn = document.getElementById('merge-close-btn')
+  const workdirLabel = document.getElementById('workdir-label')
+  const workdirChangeBtn = document.getElementById('workdir-change-btn')
+  const workdirResetBtn = document.getElementById('workdir-reset-btn')
+
+  /* Same formatter the engine's preflight uses, so the sheet and
+   * the error messages speak one language. */
+  function humanBytes(n) {
+    if (!Number.isFinite(n) || n < 0) return '?'
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    let value = n
+    let unit = 0
+    while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++ }
+    return `${value >= 100 || unit === 0 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`
+  }
+
+  async function renderWorkDir() {
+    const res = await ipcRenderer.invoke('workdir:get')
+    const dir = res && res.ok ? res.dir : null
+    const free = res && res.ok ? res.free : null
+    if (dir) {
+      workdirLabel.textContent = `Temp files: ${dir}${Number.isFinite(free) ? ` · ${humanBytes(free)} free` : ''}`
+      workdirLabel.title = dir
+      workdirResetBtn.hidden = false
+    } else {
+      workdirLabel.textContent = 'Temp files: beside the output (default)'
+      workdirLabel.title = 'Merge preprocessing writes its temp files next to the merged output'
+      workdirResetBtn.hidden = true
+    }
+  }
+
+  async function pickWorkDir() {
+    if (state.busy) return
+    const res = await ipcRenderer.invoke('workdir:pick')
+    if (res && res.ok && !res.canceled) renderWorkDir()
+  }
+
+  async function resetWorkDir() {
+    if (state.busy) return
+    await ipcRenderer.invoke('workdir:reset')
+    renderWorkDir()
+  }
 
   function render() {
     listEl.textContent = ''
@@ -88,18 +133,37 @@ module.exports = function createMergeSheet(ctx) {
     if (!output) return // canceled
 
     closeSheet('merge')
-    setBusy(true, { label: 'Merging…', progress: false }) // concat copy: indeterminate
-    setStatus(`Merging ${files.length} files — ${path.basename(output)}…`)
+    // Progress is real on both paths now: the copy concat reports
+    // time= over the joined duration, the normalize path maps every
+    // per-file step plus the final concat into one fraction.
+    setBusy(true, { label: 'Merging…', progress: true })
+    setStatus(`Merging ${files.length} files — ${path.basename(output)}${state.muted ? ' (silent)' : ''}…`)
 
+    // MUTE applies here too: while the toggle is on, the merged file
+    // is written without its audio streams.
     const result = await ipcRenderer.invoke('job:start', {
       kind: 'merge',
       inputs: [...files],
       output,
+      muted: !!state.muted,
     })
 
     if (result && result.ok) {
       state.lastOutput = output
-      setStatus(`Merged ${files.length} files into ${path.basename(output)}.`, 'ok')
+      // The merge engine reports its own story: which path ran
+      // (copy / normalize), what was re-encoded, what was skipped.
+      const total = files.length
+      const parts = [`Merged ${result.merged || total} of ${total} files into ${path.basename(output)} — `]
+      if (result.mode === 'normalize') {
+        parts.push(`normalized (re-encoded ${result.reencoded || 0} of ${result.merged || total}${state.muted ? ', silent' : ''}).`)
+      } else {
+        parts.push(`lossless copy${state.muted ? ', silent' : ''}.`)
+      }
+      const skipped = Array.isArray(result.skipped) ? result.skipped : []
+      if (skipped.length) {
+        parts.push(` Skipped: ${skipped.map(s => path.basename(s.file || '?') + ' (' + (s.reason || 'failed') + ')').join(', ')}.`)
+      }
+      setStatus(parts.join(''), skipped.length ? '' : 'ok')
     } else {
       setStatus(`Merge failed: ${(result && result.error) || 'unknown error'}`, 'err')
     }
@@ -112,6 +176,8 @@ module.exports = function createMergeSheet(ctx) {
   clearBtn.addEventListener('click', () => { files = []; render() })
   startBtn.addEventListener('click', mergeNow)
   closeBtn.addEventListener('click', () => { if (!state.busy) closeSheet('merge') })
+  workdirChangeBtn.addEventListener('click', pickWorkDir)
+  workdirResetBtn.addEventListener('click', resetWorkDir)
 
   /* Toolbar entry: multi-pick, then reveal the sheet. A single pick
    * behaves as a regular open (original behavior). */
@@ -124,15 +190,22 @@ module.exports = function createMergeSheet(ctx) {
       return
     }
     addFiles(paths)
-    openSheet('merge')
+    open()
   })
+
+  function open() {
+    render()
+    renderWorkDir()
+    openSheet('merge')
+  }
 
   return {
     addFiles,
     clear: () => { files = []; render() },
     files: () => [...files],
-    open: () => { render(); openSheet('merge') },
+    open,
     close: () => closeSheet('merge'),
     mergeNow,
+    renderWorkDir,
   }
 }

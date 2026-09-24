@@ -10,14 +10,55 @@
  * Paradigm: main-process orchestrator. */
 
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell, Tray, nativeImage } = require('electron')
+const fs = require('fs')
 const path = require('path')
 const ffmpeg = require('./ffmpeg')
 const recorder = require('./recorder')
 const streamer = require('./server')
+const { nextFreePath } = require('./naming')
 
 let mainWindow = null
 let tray = null
 let quitting = false
+
+/* ---- persisted settings (last save folder + work dir) ----
+ *
+ * "Save dir should be the last dir a file was saved in": every
+ * confirmed save rewrites the default directory for the next one,
+ * surviving restarts via userData/settings.json. Failures are
+ * swallowed — a settings problem must never block a save.
+ *
+ * workDir is where merge PREPROCESSING writes its intermediates
+ * (normalize parts). Default null = a hidden folder beside the
+ * merged output (same-filesystem atomic rename); a chosen dir is
+ * for the "output disk is small, the big scratch lives elsewhere"
+ * case — the disk preflight reports its free space, and the merge
+ * engine keeps the final publish beside the output regardless. */
+
+const settingsFile = () => path.join(app.getPath('userData'), 'settings.json')
+const settings = { lastSaveDir: null, workDir: null }
+
+function loadSettings() {
+  try {
+    const raw = fs.readFileSync(settingsFile(), 'utf8')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed.lastSaveDir === 'string') {
+        settings.lastSaveDir = parsed.lastSaveDir
+      }
+      if (parsed && typeof parsed.workDir === 'string' && parsed.workDir) {
+        settings.workDir = parsed.workDir
+      }
+    }
+  } catch (e) { /* first run or unreadable — defaults stand */ }
+}
+
+function persistSettings() {
+  try {
+    fs.mkdirSync(path.dirname(settingsFile()), { recursive: true })
+    fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2))
+  } catch (e) { /* non-fatal by design */ }
+}
 
 const appIcon = path.join(__dirname, 'assets', 'logo.png')
 const emptyIcon = nativeImage.createEmpty()
@@ -145,8 +186,119 @@ ipcMain.handle('dialog:open-multi', async () => {
 })
 
 ipcMain.handle('dialog:save', async (_event, options) => {
-  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, options || {})
+  const opts = { ...(options || {}) }
+  // The last confirmed save folder wins over the suggested one —
+  // the renderer keeps suggesting names, main owns where they land.
+  if (settings.lastSaveDir && typeof opts.defaultPath === 'string' && opts.defaultPath) {
+    opts.defaultPath = path.join(settings.lastSaveDir, path.basename(opts.defaultPath))
+  }
+  // Idempotent + ascending: the offered default never collides with
+  // an existing file (clip 2, clip 3 …), so no overwrite prompt for
+  // a name the user did not pick themselves.
+  if (typeof opts.defaultPath === 'string' && opts.defaultPath) {
+    opts.defaultPath = nextFreePath(opts.defaultPath)
+  }
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, opts)
+  if (!canceled && filePath) {
+    settings.lastSaveDir = path.dirname(filePath)
+    persistSettings()
+  }
   return canceled ? null : filePath
+})
+
+/* Screenshots (Capture / S) are zero-friction by design: no save
+ * dialog, no directory to pick every time — they land straight in
+ * ~/Pictures/screenshots under the app-wide idempotent naming
+ * ("name [capture].jpg", then " 2", " 3"… on collision). The folder
+ * is created on demand; a failure here surfaces as an error status,
+ * never a crash. */
+function screenshotsDir() {
+  try {
+    return path.join(app.getPath('pictures'), 'screenshots')
+  } catch (e) {
+    return path.join(app.getPath('home'), 'Pictures', 'screenshots')
+  }
+}
+
+ipcMain.handle('capture:save', async (_event, payload) => {
+  try {
+    // Accept a plain path or a { source } envelope — defensive both ways.
+    const source = typeof payload === 'string' ? payload : (payload && payload.source)
+    const dir = screenshotsDir()
+    fs.mkdirSync(dir, { recursive: true })
+    const extname = typeof source === 'string' ? path.extname(source) : ''
+    const base = (typeof source === 'string' && path.basename(source, extname)) || 'capture'
+    const output = nextFreePath(path.join(dir, `${base} [capture].jpg`))
+    return { ok: true, output }
+  } catch (error) {
+    return { ok: false, error: String((error && error.message) || error) }
+  }
+})
+
+/* Free space of a directory in bytes, or null when statfs is
+ * unavailable (very old runtimes) — the UI then shows the path
+ * without a figure instead of a wrong one. */
+function freeSpace(dir) {
+  if (typeof fs.statfsSync !== 'function') return null
+  try {
+    const st = fs.statfsSync(dir)
+    const free = Number(st.bsize) * Number(st.bavail)
+    return Number.isFinite(free) && free > 0 ? free : null
+  } catch (e) {
+    return null
+  }
+}
+
+/* ---- work dir (merge preprocessing scratch) ----
+ *
+ * Contract shared by set/pick/get/reset:
+ *   { ok, dir, free }   dir = string | null, free = bytes | null
+ * The renderer displays it in the merge sheet; the merge engine
+ * receives it via job.workDir at job:start (below) so the UI can
+ * never drift from what the engine actually uses. */
+function workdirStatus() {
+  const dir = settings.workDir
+  return { ok: true, dir: dir || null, free: dir ? freeSpace(dir) : null }
+}
+
+function setWorkDir(dir) {
+  try {
+    const st = fs.statSync(dir)
+    if (!st.isDirectory()) return { ok: false, error: 'Not a folder' }
+  } catch (e) {
+    return { ok: false, error: 'Folder not found' }
+  }
+  settings.workDir = dir
+  persistSettings()
+  return workdirStatus()
+}
+
+ipcMain.handle('workdir:get', () => workdirStatus())
+
+/* Explicit set (tests / future callers) — validates and persists. */
+ipcMain.handle('workdir:set', (_event, payload) => {
+  const dir = typeof payload === 'string' ? payload : (payload && payload.dir)
+  if (typeof dir !== 'string' || !dir) return { ok: false, error: 'Missing folder' }
+  return setWorkDir(dir)
+})
+
+/* The interactive path: native directory picker, then the same
+ * setter. A dismissed dialog is a no-op (canceled: true). */
+ipcMain.handle('workdir:pick', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: 'Choose the preprocessing work dir',
+    properties: ['openDirectory', 'createDirectory'],
+  })
+  if (canceled || !filePaths || !filePaths.length) {
+    return { ...workdirStatus(), canceled: true }
+  }
+  return setWorkDir(filePaths[0])
+})
+
+ipcMain.handle('workdir:reset', () => {
+  settings.workDir = null
+  persistSettings()
+  return workdirStatus()
 })
 
 /* One slot, five kinds — ffmpeg enforces the single-flight rule. */
@@ -158,7 +310,23 @@ ipcMain.handle('job:start', async (_event, job) => {
     if (kind === 'convert') return { ok: true, mode: await ffmpeg.convert(job, sendProgress) }
     if (kind === 'extract') return { ok: true, mode: await ffmpeg.extract(job, sendProgress) }
     if (kind === 'capture') return { ok: true, mode: await ffmpeg.capture(job) }
-    if (kind === 'merge') return { ok: true, mode: await ffmpeg.merge(job, sendProgress) }
+    // merge resolves to a result object: which path ran, how many
+    // files made it, how many were re-encoded, what was skipped.
+    // The persisted work dir is injected here — one source of truth
+    // for the engine; an explicit job.workDir (tests) wins.
+    if (kind === 'merge') {
+      if (!(typeof job.workDir === 'string' && job.workDir) && settings.workDir) {
+        job.workDir = settings.workDir
+      }
+      const merged = await ffmpeg.merge(job, sendProgress)
+      return {
+        ok: true,
+        mode: merged.mode,
+        merged: merged.merged,
+        reencoded: merged.reencoded,
+        skipped: merged.skipped || [],
+      }
+    }
     return { ok: false, error: 'Unknown job kind' }
   } catch (error) {
     return { ok: false, error: String((error && error.message) || error) }
@@ -240,7 +408,10 @@ if (!app.requestSingleInstanceLock()) {
     }
   })
 
-  app.whenReady().then(createWindow)
+  app.whenReady().then(() => {
+    loadSettings()
+    createWindow()
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
