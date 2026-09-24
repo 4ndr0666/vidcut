@@ -342,4 +342,4 @@ This repository enforces the **Superset Protocol**. Any revision or refactoring 
 
 ## 10. LICENSE
 
-UNLICENSED - REDTEAM ONLY.
+SEE LICENSE.
