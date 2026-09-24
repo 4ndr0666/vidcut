@@ -96,21 +96,20 @@ ln -sf /home/git/clone/4ndr0666/vidcut/out/vidcut-linux-x64/vidcut ~/.local/bin/
 Bind the binary directly in your window manager configuration:
 
 ```lua
--- Example for Lua-configured window managers / Hyprland wrappers:
+-- Example for Lua-configured window managers:
+local lbin = os.getenv("HOME") .. "/.local/bin"
+
 hl.bind(
     mainMod .. " + F6",
-    function()
-        hl.dsp.exec_cmd("vidcut")
-    end,
+    hl.dsp.exec_cmd(lbin .. "/vidcut"),
     { description = "Vidcut Lossless Video Toolkit" }
 )
-
 ```
 
 *Or in standard `hyprland.conf`:*
 
 ```ini
-bind = $mainMod, F6, exec, vidcut
+hl.bind(mainMod .. " + F6", hl.dsp.exec_cmd(lbin .. "/vidcut"), { description = "Vidcut Lossless Video Toolkit" })
 
 ```
 
